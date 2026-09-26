@@ -244,7 +244,7 @@ export default function DashboardPage() {
   "/dashboard/weather",
   "/dashboard/long-term",
   "/dashboard/my-predictions",
-  "/dashboard",
+  "/dashboard/balance",
   "/dashboard",
   "/dashboard",
   "/dashboard",
