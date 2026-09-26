@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
+import Link from "next/link";
 type Language = "bg" | "en";
 
 type Market = {
@@ -233,20 +233,38 @@ export default function DashboardPage() {
             <h1 className="mt-2 text-xl font-bold">{t.dashboard}</h1>
           </div>
 
-          <nav className="space-y-1 p-4">
-            {t.menu.map((item, index) => (
-              <button
-                key={item}
-                className={`w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
-                  index === 0
-                    ? "bg-emerald-500 text-slate-950"
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </nav>
+         <nav className="space-y-1 p-4">
+  {t.menu.map((item, index) => {
+    const routes = [
+      "/dashboard",
+      "/dashboard",
+      "/dashboard/football",
+      "/dashboard/tennis",
+      "/dashboard/basketball",
+      "/dashboard/weather",
+      "/dashboard/long-term",
+      "/dashboard",
+      "/dashboard",
+      "/dashboard",
+      "/dashboard",
+      "/dashboard",
+    ];
+
+    return (
+      <Link
+        key={item}
+        href={routes[index]}
+        className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+          index === 0
+            ? "bg-emerald-500 text-slate-950"
+            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+        }`}
+      >
+        {item}
+      </Link>
+    );
+  })}
+</nav>
         </aside>
 
         <section className="flex-1">
