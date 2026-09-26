@@ -236,19 +236,19 @@ export default function DashboardPage() {
          <nav className="space-y-1 p-4">
   {t.menu.map((item, index) => {
     const routes = [
-      "/dashboard",
-      "/dashboard",
-      "/dashboard/football",
-      "/dashboard/tennis",
-      "/dashboard/basketball",
-      "/dashboard/weather",
-      "/dashboard/long-term",
-      "/dashboard",
-      "/dashboard",
-      "/dashboard",
-      "/dashboard",
-      "/dashboard",
-    ];
+  "/dashboard",
+  "/dashboard",
+  "/dashboard/football",
+  "/dashboard/tennis",
+  "/dashboard/basketball",
+  "/dashboard/weather",
+  "/dashboard/long-term",
+  "/dashboard/my-predictions",
+  "/dashboard",
+  "/dashboard",
+  "/dashboard",
+  "/dashboard",
+];
 
     return (
       <Link
