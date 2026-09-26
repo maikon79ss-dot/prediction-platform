@@ -247,7 +247,7 @@ export default function DashboardPage() {
   "/dashboard/balance",
   "/dashboard/rankings",
   "/dashboard/history",
-  "/dashboard",
+  "/dashboard/profile",
 ];
 
     return (
