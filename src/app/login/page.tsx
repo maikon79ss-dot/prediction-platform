@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function LoginPage() {
   const [language, setLanguage] = useState<"bg" | "en">("bg");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
 
   const t =
     language === "bg"
@@ -14,9 +23,13 @@ export default function LoginPage() {
           email: "Имейл",
           password: "Парола",
           login: "Вход",
+          loggingIn: "Влизане...",
           noAccount: "Нямаш акаунт?",
           create: "Създай акаунт",
           back: "Обратно към началната страница",
+          error: "Грешка при вход.",
+          wrongCredentials: "Невалиден имейл или парола.",
+          success: "Успешен вход.",
         }
       : {
           title: "Login to your account",
@@ -24,10 +37,43 @@ export default function LoginPage() {
           email: "Email",
           password: "Password",
           login: "Login",
+          loggingIn: "Signing in...",
           noAccount: "Don't have an account?",
           create: "Create account",
           back: "Back to homepage",
+          error: "Login failed.",
+          wrongCredentials: "Invalid email or password.",
+          success: "Login successful.",
         };
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    setLoading(true);
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+
+      setMessage(t.success);
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("LOGIN ERROR:", error);
+
+      if (
+        error?.code === "auth/invalid-credential" ||
+        error?.code === "auth/user-not-found" ||
+        error?.code === "auth/wrong-password"
+      ) {
+        setMessage(t.wrongCredentials);
+      } else {
+        setMessage(
+          `${t.error} ${error?.code ? `(${error.code})` : ""}`
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -79,7 +125,10 @@ export default function LoginPage() {
 
             <p className="mt-3 text-slate-400">{t.subtitle}</p>
 
-            <form className="mt-8 space-y-5">
+            <form
+              onSubmit={handleLogin}
+              className="mt-8 space-y-5"
+            >
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-300">
                   {t.email}
@@ -87,6 +136,9 @@ export default function LoginPage() {
 
                 <input
                   type="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   placeholder="name@example.com"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400"
                 />
@@ -99,6 +151,9 @@ export default function LoginPage() {
 
                 <input
                   type="password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   placeholder="••••••••"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400"
                 />
@@ -106,11 +161,18 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400"
+                disabled={loading}
+                className="w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {t.login}
+                {loading ? t.loggingIn : t.login}
               </button>
             </form>
+
+            {message && (
+              <div className="mt-5 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                {message}
+              </div>
+            )}
 
             <div className="mt-6 text-center text-sm text-slate-400">
               {t.noAccount}{" "}
