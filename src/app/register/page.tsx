@@ -128,10 +128,13 @@ export default function RegisterPage() {
       setMessage(t.success);
 
       router.push("/dashboard");
-    } catch (error) {
-      console.error(error);
-      setMessage(t.error);
-    } finally {
+   } catch (error: any) {
+  console.error("REGISTER ERROR:", error);
+
+  setMessage(
+    `${t.error} ${error?.code ? `(${error.code})` : ""}`
+  );
+} finally {
       setLoading(false);
     }
   }
