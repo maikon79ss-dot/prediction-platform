@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import Link from "next/link";
 type Language = "bg" | "en";
 
@@ -74,7 +78,39 @@ const markets: Market[] = [
 
 export default function DashboardPage() {
   const [language, setLanguage] = useState<Language>("bg");
-  const [balance, setBalance] = useState(10000);
+  const [balance, setBalance] = useState(0);
+const [lockedPoints, setLockedPoints] = useState(0);
+const [userName, setUserName] = useState("");
+const [loadingUser, setLoadingUser] = useState(true);
+
+const router = useRouter();
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+
+        setBalance(data.balance ?? 0);
+        setLockedPoints(data.lockedPoints ?? 0);
+        setUserName(data.name ?? user.displayName ?? "");
+      }
+    } catch (error) {
+      console.error("DASHBOARD USER ERROR:", error);
+    } finally {
+      setLoadingUser(false);
+    }
+  });
+
+  return () => unsubscribe();
+}, [router]);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
     {}
   );
@@ -199,7 +235,7 @@ export default function DashboardPage() {
       language === "bg" ? market.eventBg : market.eventEn;
 
     setBalance((current) => current - amount);
-
+setLockedPoints((current) => current + amount);
     setPredictions((current) => [
       ...current,
       {
@@ -221,7 +257,15 @@ export default function DashboardPage() {
 
     setMessage(t.success);
   }
-
+if (loadingUser) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+      <p className="text-slate-400">
+        {language === "bg" ? "Зареждане..." : "Loading..."}
+      </p>
+    </main>
+  );
+}
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="flex min-h-screen">
@@ -271,7 +315,10 @@ export default function DashboardPage() {
           <header className="border-b border-slate-800 bg-slate-950/95">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 lg:px-8">
               <div>
-                <p className="text-sm text-slate-400">{t.welcome}</p>
+                <p className="text-sm text-slate-400">
+  {t.welcome}
+  {userName ? `, ${userName}` : ""}
+</p>
                 <h2 className="text-2xl font-bold">{t.subtitle}</h2>
               </div>
 
@@ -316,10 +363,7 @@ export default function DashboardPage() {
                     {t.locked}
                   </p>
                   <p className="text-xl font-bold">
-                    {predictions
-                      .reduce((sum, item) => sum + item.points, 0)
-                      .toLocaleString()}{" "}
-                    {t.points}
+                   {lockedPoints.toLocaleString()} {t.points}
                   </p>
                 </div>
               </div>
@@ -375,7 +419,7 @@ export default function DashboardPage() {
                     language === "bg"
                       ? market.optionsBg
                       : market.optionsEn;
-
+                     
                   return (
                     <article
                       key={key}
