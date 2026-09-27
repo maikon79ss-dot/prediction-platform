@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  runTransaction,
+  serverTimestamp,
+} from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import Link from "next/link";
 type Language = "bg" | "en";
@@ -211,31 +217,101 @@ useEffect(() => {
           ],
         };
 
-  function handlePrediction(market: Market) {
-    const key = market.eventEn;
-    const selected = selectedOptions[key];
-    const amount = amounts[key] ?? 100;
+ async function handlePrediction(market: Market) {
+  const key = market.eventEn;
+  const selected = selectedOptions[key];
+  const amount = amounts[key] ?? 100;
 
-    if (!selected) {
-      setMessage(t.chooseOption);
-      return;
-    }
+  if (!selected) {
+    setMessage(t.chooseOption);
+    return;
+  }
 
-    if (amount < 100) {
-      setMessage(t.minimumError);
-      return;
-    }
+  if (amount < 100) {
+    setMessage(t.minimumError);
+    return;
+  }
 
-    if (amount > balance) {
-      setMessage(t.balanceError);
-      return;
-    }
+  const user = auth.currentUser;
 
+  if (!user) {
+    router.push("/login");
+    return;
+  }
+
+  try {
     const event =
       language === "bg" ? market.eventBg : market.eventEn;
 
-    setBalance((current) => current - amount);
-setLockedPoints((current) => current + amount);
+    const userRef = doc(db, "users", user.uid);
+
+    const predictionRef = doc(
+      collection(db, "predictions")
+    );
+
+    const transactionRef = doc(
+      collection(db, "transactions")
+    );
+
+    await runTransaction(db, async (transaction) => {
+      const userSnap = await transaction.get(userRef);
+
+      if (!userSnap.exists()) {
+        throw new Error("USER_NOT_FOUND");
+      }
+
+      const userData = userSnap.data();
+
+      const currentBalance =
+        Number(userData.balance) || 0;
+
+      const currentLockedPoints =
+        Number(userData.lockedPoints) || 0;
+
+      if (amount > currentBalance) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
+
+      const newBalance =
+        currentBalance - amount;
+
+      const newLockedPoints =
+        currentLockedPoints + amount;
+
+      transaction.update(userRef, {
+        balance: newBalance,
+        lockedPoints: newLockedPoints,
+      });
+
+      transaction.set(predictionRef, {
+        userId: user.uid,
+        category: market.type,
+        event: market.eventEn,
+        eventBg: market.eventBg,
+        choice: selected,
+        points: amount,
+        status: "active",
+        result: "pending",
+        balanceChange: -amount,
+        starts: market.starts,
+        createdAt: serverTimestamp(),
+      });
+
+      transaction.set(transactionRef, {
+        userId: user.uid,
+        type: "prediction",
+        description: `Prediction: ${market.eventEn}`,
+        amount: -amount,
+        balanceAfter: newBalance,
+        status: "completed",
+        predictionId: predictionRef.id,
+        createdAt: serverTimestamp(),
+      });
+
+      setBalance(newBalance);
+      setLockedPoints(newLockedPoints);
+    });
+
     setPredictions((current) => [
       ...current,
       {
@@ -256,7 +332,27 @@ setLockedPoints((current) => current + amount);
     }));
 
     setMessage(t.success);
+  } catch (error) {
+    console.error(
+      "PREDICTION ERROR:",
+      error
+    );
+
+    if (
+      error instanceof Error &&
+      error.message === "INSUFFICIENT_BALANCE"
+    ) {
+      setMessage(t.balanceError);
+      return;
+    }
+
+    setMessage(
+      language === "bg"
+        ? "Възникна грешка при записването на прогнозата."
+        : "An error occurred while saving the prediction."
+    );
   }
+}
 if (loadingUser) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
