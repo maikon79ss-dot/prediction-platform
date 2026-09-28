@@ -803,7 +803,7 @@ async function handlePrediction(
       : "Saving..."
     : t.confirm}
 </button>
-                  </button>
+                  
                 </article>
               );
             })}
