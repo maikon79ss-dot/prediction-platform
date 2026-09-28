@@ -5,6 +5,15 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  collection,
+  doc,
+  runTransaction,
+  serverTimestamp,
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 type Language = "bg" | "en";
 
@@ -73,7 +82,16 @@ export default function FootballPage() {
 
   const [amounts, setAmounts] =
     useState<Record<string, number>>({});
+const [balance, setBalance] =
+  useState(0);
 
+const [submitting, setSubmitting] =
+  useState<string | null>(null);
+
+const [message, setMessage] =
+  useState("");
+
+const router = useRouter();
   const t =
     language === "bg"
       ? {
@@ -128,7 +146,49 @@ export default function FootballPage() {
           development:
             "Development data from the 2024 season",
         };
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(
+    auth,
+    async (user) => {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
+      try {
+        const userRef = doc(
+          db,
+          "users",
+          user.uid
+        );
+
+        const { getDoc } =
+          await import(
+            "firebase/firestore"
+          );
+
+        const userSnap =
+          await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const data =
+            userSnap.data();
+
+          setBalance(
+            Number(data.balance) || 0
+          );
+        }
+      } catch (error) {
+        console.error(
+          "FOOTBALL USER ERROR:",
+          error
+        );
+      }
+    }
+  );
+
+  return () => unsubscribe();
+}, [router]);
   useEffect(() => {
     async function loadMatches() {
       try {
@@ -223,7 +283,266 @@ export default function FootballPage() {
 
     return `${match.league.country} - ${match.league.name}`;
   }
+async function handlePrediction(
+  match: Match
+) {
+  const user = auth.currentUser;
 
+  if (!user) {
+    router.push("/login");
+    return;
+  }
+
+  if (!match.fixtureId) {
+    setMessage(
+      language === "bg"
+        ? "Липсва Fixture ID."
+        : "Fixture ID is missing."
+    );
+    return;
+  }
+
+  const key = String(
+    match.fixtureId
+  );
+
+  const choice =
+    selectedOptions[key];
+
+  const points =
+    amounts[key] ?? 100;
+
+  if (!choice) {
+    setMessage(
+      language === "bg"
+        ? "Избери Домакин, Равен или Гост."
+        : "Choose Home, Draw or Away."
+    );
+    return;
+  }
+
+  if (points < 100) {
+    setMessage(
+      language === "bg"
+        ? "Минималната прогноза е 100 точки."
+        : "Minimum prediction is 100 points."
+    );
+    return;
+  }
+
+  if (points > balance) {
+    setMessage(
+      language === "bg"
+        ? "Нямаш достатъчно точки."
+        : "You do not have enough points."
+    );
+    return;
+  }
+
+  try {
+    setSubmitting(key);
+    setMessage("");
+
+    const userRef = doc(
+      db,
+      "users",
+      user.uid
+    );
+
+    const predictionRef = doc(
+      collection(
+        db,
+        "predictions"
+      )
+    );
+
+    const transactionRef = doc(
+      collection(
+        db,
+        "transactions"
+      )
+    );
+
+    await runTransaction(
+      db,
+      async (transaction) => {
+        const userSnap =
+          await transaction.get(
+            userRef
+          );
+
+        if (!userSnap.exists()) {
+          throw new Error(
+            "USER_NOT_FOUND"
+          );
+        }
+
+        const userData =
+          userSnap.data();
+
+        const currentBalance =
+          Number(
+            userData.balance
+          ) || 0;
+
+        const currentLocked =
+          Number(
+            userData.lockedPoints
+          ) || 0;
+
+        if (
+          points >
+          currentBalance
+        ) {
+          throw new Error(
+            "INSUFFICIENT_BALANCE"
+          );
+        }
+
+        const newBalance =
+          currentBalance -
+          points;
+
+        const newLocked =
+          currentLocked +
+          points;
+
+        transaction.update(
+          userRef,
+          {
+            balance:
+              newBalance,
+            lockedPoints:
+              newLocked,
+          }
+        );
+
+        transaction.set(
+          predictionRef,
+          {
+            userId:
+              user.uid,
+
+            category:
+              "football",
+
+            fixtureId:
+              match.fixtureId,
+
+            leagueId:
+              match.league.id,
+
+            leagueName:
+              match.league.name,
+
+            homeTeam:
+              match.home.name,
+
+            awayTeam:
+              match.away.name,
+
+            event:
+              `${match.home.name} vs ${match.away.name}`,
+
+            eventBg:
+              `${match.home.name} срещу ${match.away.name}`,
+
+            choice,
+
+            points,
+
+            status:
+              "active",
+
+            result:
+              "pending",
+
+            balanceChange:
+              -points,
+
+            fixtureDate:
+              match.date,
+
+            development:
+              true,
+
+            season:
+              2024,
+
+            createdAt:
+              serverTimestamp(),
+          }
+        );
+
+        transaction.set(
+          transactionRef,
+          {
+            userId:
+              user.uid,
+
+            type:
+              "prediction",
+
+            description:
+              `Prediction: ${match.home.name} vs ${match.away.name}`,
+
+            amount:
+              -points,
+
+            balanceAfter:
+              newBalance,
+
+            status:
+              "completed",
+
+            predictionId:
+              predictionRef.id,
+
+            createdAt:
+              serverTimestamp(),
+          }
+        );
+
+        setBalance(
+          newBalance
+        );
+      }
+    );
+
+    setSelectedOptions(
+      (current) => ({
+        ...current,
+        [key]: "",
+      })
+    );
+
+    setAmounts(
+      (current) => ({
+        ...current,
+        [key]: 100,
+      })
+    );
+
+    setMessage(
+      language === "bg"
+        ? "Тестовата футболна прогноза е записана успешно."
+        : "Development football prediction saved successfully."
+    );
+  } catch (error) {
+    console.error(
+      "FOOTBALL PREDICTION ERROR:",
+      error
+    );
+
+    setMessage(
+      language === "bg"
+        ? "Възникна грешка при записването на прогнозата."
+        : "An error occurred while saving the prediction."
+    );
+  } finally {
+    setSubmitting(null);
+  }
+}
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-950/95">
@@ -292,6 +611,20 @@ export default function FootballPage() {
           <p className="mt-2 text-sm text-amber-300">
             {t.development}
           </p>
+          <p className="mt-2 text-sm font-semibold text-emerald-400">
+  {language === "bg"
+    ? "Наличен баланс"
+    : "Available balance"}
+  : {balance.toLocaleString()}{" "}
+  {language === "bg"
+    ? "точки"
+    : "points"}
+</p>
+{message && (
+  <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+    {message}
+  </div>
+)}
         </div>
 
         {loading ? (
@@ -366,7 +699,7 @@ export default function FootballPage() {
                   <div className="mt-6 grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      disabled={isFinished}
+                      
                       onClick={() =>
                         setSelectedOptions(
                           (current) => ({
@@ -386,7 +719,7 @@ export default function FootballPage() {
 
                     <button
                       type="button"
-                      disabled={isFinished}
+                      
                       onClick={() =>
                         setSelectedOptions(
                           (current) => ({
@@ -406,7 +739,7 @@ export default function FootballPage() {
 
                     <button
                       type="button"
-                      disabled={isFinished}
+                      
                       onClick={() =>
                         setSelectedOptions(
                           (current) => ({
@@ -433,7 +766,7 @@ export default function FootballPage() {
                     <input
                       type="number"
                       min="100"
-                      disabled={isFinished}
+                      
                       value={
                         amounts[key] ?? 100
                       }
@@ -453,15 +786,23 @@ export default function FootballPage() {
                     />
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={
-                      isFinished ||
-                      !selected
-                    }
-                    className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {t.confirm}
+                <button
+  type="button"
+  disabled={
+    !selected ||
+    submitting === key
+  }
+  onClick={() =>
+    handlePrediction(match)
+  }
+  className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+>
+  {submitting === key
+    ? language === "bg"
+      ? "Записване..."
+      : "Saving..."
+    : t.confirm}
+</button>
                   </button>
                 </article>
               );
