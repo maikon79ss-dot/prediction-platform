@@ -106,8 +106,8 @@ export default function RegisterPage() {
       await setDoc(doc(db, "users", user.uid), {
         name,
         email,
-        balance: 10000,
-        lockedPoints: 0,
+       balance: 3000,
+lockedPoints: 0,
         language,
         totalPredictions: 0,
         correctPredictions: 0,
@@ -119,8 +119,8 @@ export default function RegisterPage() {
         userId: user.uid,
         type: "bonus",
         description: "Welcome bonus",
-        amount: 10000,
-        balanceAfter: 10000,
+       amount: 3000,
+balanceAfter: 3000,
         status: "completed",
         createdAt: serverTimestamp(),
       });
