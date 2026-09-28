@@ -7,7 +7,6 @@ import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   getDocs,
-  orderBy,
   query,
   where,
 } from "firebase/firestore";
@@ -78,15 +77,24 @@ export default function MyPredictionsPage() {
       try {
         const predictionsRef = collection(db, "predictions");
 
-        const predictionsQuery = query(
-          predictionsRef,
-          where("userId", "==", user.uid),
-          orderBy("createdAt", "desc")
-        );
+       const predictionsQuery = query(
+  predictionsRef,
+  where("userId", "==", user.uid)
+);
 
         const snapshot = await getDocs(predictionsQuery);
 
-        const loadedPredictions: Prediction[] = snapshot.docs.map((doc) => {
+        const loadedPredictions: Prediction[] = snapshot.docs
+  .sort((a, b) => {
+    const aTime =
+      a.data().createdAt?.toMillis?.() ?? 0;
+
+    const bTime =
+      b.data().createdAt?.toMillis?.() ?? 0;
+
+    return bTime - aTime;
+  })
+  .map((doc) => {
           const data = doc.data();
 
           let type: Filter = "active";
