@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
 
 type SettlementResult = "won" | "lost" | "refund";
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
+    const secret =
+      request.headers.get("x-settlement-secret");
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    const expectedSecret =
+      process.env.SETTLEMENT_SECRET;
+
+    if (
+      !expectedSecret ||
+      !secret ||
+      secret !== expectedSecret
+    ) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
-
-    const idToken = authHeader.substring(7);
-
-    const decodedToken =
-      await adminAuth.verifyIdToken(idToken);
 
     const body = await request.json();
 
@@ -50,20 +53,18 @@ export async function POST(request: NextRequest) {
           await transaction.get(predictionRef);
 
         if (!predictionSnap.exists) {
-          throw new Error("PREDICTION_NOT_FOUND");
+          throw new Error(
+            "PREDICTION_NOT_FOUND"
+          );
         }
 
         const prediction =
           predictionSnap.data();
 
         if (!prediction) {
-          throw new Error("PREDICTION_NOT_FOUND");
-        }
-
-        if (
-          prediction.userId !== decodedToken.uid
-        ) {
-          throw new Error("FORBIDDEN");
+          throw new Error(
+            "PREDICTION_NOT_FOUND"
+          );
         }
 
         if (prediction.status !== "active") {
@@ -72,27 +73,49 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        const userId =
+          typeof prediction.userId === "string"
+            ? prediction.userId
+            : "";
+
+        if (!userId) {
+          throw new Error(
+            "USER_NOT_FOUND"
+          );
+        }
+
         const points =
           Number(prediction.points) || 0;
 
+        if (points <= 0) {
+          throw new Error(
+            "INVALID_POINTS"
+          );
+        }
+
         const userRef = adminDb
           .collection("users")
-          .doc(decodedToken.uid);
+          .doc(userId);
 
         const userSnap =
           await transaction.get(userRef);
 
         if (!userSnap.exists) {
-          throw new Error("USER_NOT_FOUND");
+          throw new Error(
+            "USER_NOT_FOUND"
+          );
         }
 
-        const userData = userSnap.data();
+        const userData =
+          userSnap.data();
 
         const currentBalance =
           Number(userData?.balance) || 0;
 
         const currentLockedPoints =
-          Number(userData?.lockedPoints) || 0;
+          Number(
+            userData?.lockedPoints
+          ) || 0;
 
         let balanceCredit = 0;
 
@@ -118,40 +141,46 @@ export async function POST(request: NextRequest) {
           lockedPoints: newLockedPoints,
         });
 
-        transaction.update(predictionRef, {
-          status: result,
-          result,
-          settlementBalanceChange:
-            balanceCredit,
-          settledAt:
-            FieldValue.serverTimestamp(),
-        });
+        transaction.update(
+          predictionRef,
+          {
+            status: result,
+            result,
+            settlementBalanceChange:
+              balanceCredit,
+            settledAt:
+              FieldValue.serverTimestamp(),
+          }
+        );
 
-        const transactionRef = adminDb
+        const movementRef = adminDb
           .collection("transactions")
           .doc();
 
-        transaction.set(transactionRef, {
-          userId: decodedToken.uid,
-          type:
-            result === "won"
-              ? "win"
-              : result === "refund"
-              ? "refund"
-              : "prediction_loss",
-          description:
-            result === "won"
-              ? `Correct prediction: ${prediction.event}`
-              : result === "refund"
-              ? `Refund: ${prediction.event}`
-              : `Lost prediction: ${prediction.event}`,
-          amount: balanceCredit,
-          balanceAfter: newBalance,
-          status: "completed",
-          predictionId,
-          createdAt:
-            FieldValue.serverTimestamp(),
-        });
+        transaction.set(
+          movementRef,
+          {
+            userId,
+            type:
+              result === "won"
+                ? "win"
+                : result === "refund"
+                ? "refund"
+                : "loss",
+            description:
+              result === "won"
+                ? `Correct prediction: ${prediction.event}`
+                : result === "refund"
+                ? `Refund: ${prediction.event}`
+                : `Lost prediction: ${prediction.event}`,
+            amount: balanceCredit,
+            balanceAfter: newBalance,
+            status: "completed",
+            predictionId,
+            createdAt:
+              FieldValue.serverTimestamp(),
+          }
+        );
       }
     );
 
@@ -169,13 +198,6 @@ export async function POST(request: NextRequest) {
       error instanceof Error
         ? error.message
         : "UNKNOWN_ERROR";
-
-    if (message === "FORBIDDEN") {
-      return NextResponse.json(
-        { error: message },
-        { status: 403 }
-      );
-    }
 
     if (
       message ===
@@ -196,6 +218,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: message },
         { status: 409 }
+      );
+    }
+
+    if (message === "INVALID_POINTS") {
+      return NextResponse.json(
+        { error: message },
+        { status: 400 }
       );
     }
 
