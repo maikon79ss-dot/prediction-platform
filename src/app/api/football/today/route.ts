@@ -33,6 +33,10 @@ type FixtureItem = {
   };
 };
 
+function formatDate(date: Date) {
+  return date.toISOString().split("T")[0];
+}
+
 export async function GET() {
   try {
     const apiKey =
@@ -45,11 +49,18 @@ export async function GET() {
       );
     }
 
-    const today =
-      new Date().toISOString().split("T")[0];
+    const fromDate = new Date();
+    const toDate = new Date();
+
+    toDate.setDate(
+      toDate.getDate() + 7
+    );
+
+    const from = formatDate(fromDate);
+    const to = formatDate(toDate);
 
     const response = await fetch(
-      `https://v3.football.api-sports.io/fixtures?date=${today}`,
+      `https://v3.football.api-sports.io/fixtures?from=${from}&to=${to}`,
       {
         headers: {
           "x-apisports-key": apiKey,
@@ -75,81 +86,105 @@ export async function GET() {
         ? data.response
         : [];
 
-  const allowedLeagueIds = [
-  39,  // Premier League
-  172, // Bulgaria First League
-  174, // Bulgaria Cup
-];
+    const allowedLeagueIds = [
+      39,  // Premier League
+      172, // Bulgaria First League
+      174, // Bulgaria Cup
+    ];
 
-const filteredFixtures =
-  fixtures.filter((item) => {
-    const leagueId =
-      item.league?.id ?? null;
+    const filteredFixtures =
+      fixtures.filter((item) => {
+        const leagueId =
+          item.league?.id ?? null;
 
-    return (
-      leagueId !== null &&
-      allowedLeagueIds.includes(leagueId)
-    );
-  });
+        return (
+          leagueId !== null &&
+          allowedLeagueIds.includes(
+            leagueId
+          )
+        );
+      });
+
     const matches =
-      filteredFixtures.map((item) => ({
-        fixtureId:
-          item.fixture?.id ?? null,
+      filteredFixtures
+        .map((item) => ({
+          fixtureId:
+            item.fixture?.id ?? null,
 
-        date:
-          item.fixture?.date ?? null,
+          date:
+            item.fixture?.date ?? null,
 
-        status:
-          item.fixture?.status?.short ?? null,
+          status:
+            item.fixture?.status?.short ??
+            null,
 
-        statusLong:
-          item.fixture?.status?.long ?? null,
+          statusLong:
+            item.fixture?.status?.long ??
+            null,
 
-        league: {
-          id:
-            item.league?.id ?? null,
-          name:
-            item.league?.name ?? "",
-          country:
-            item.league?.country ?? "",
-          logo:
-            item.league?.logo ?? "",
-        },
+          league: {
+            id:
+              item.league?.id ?? null,
+            name:
+              item.league?.name ?? "",
+            country:
+              item.league?.country ?? "",
+            logo:
+              item.league?.logo ?? "",
+          },
 
-        home: {
-          id:
-            item.teams?.home?.id ?? null,
-          name:
-            item.teams?.home?.name ?? "",
-          logo:
-            item.teams?.home?.logo ?? "",
-        },
+          home: {
+            id:
+              item.teams?.home?.id ??
+              null,
+            name:
+              item.teams?.home?.name ??
+              "",
+            logo:
+              item.teams?.home?.logo ??
+              "",
+          },
 
-        away: {
-          id:
-            item.teams?.away?.id ?? null,
-          name:
-            item.teams?.away?.name ?? "",
-          logo:
-            item.teams?.away?.logo ?? "",
-        },
+          away: {
+            id:
+              item.teams?.away?.id ??
+              null,
+            name:
+              item.teams?.away?.name ??
+              "",
+            logo:
+              item.teams?.away?.logo ??
+              "",
+          },
 
-        goals: {
-          home:
-            item.goals?.home ?? null,
-          away:
-            item.goals?.away ?? null,
-        },
-      }));
+          goals: {
+            home:
+              item.goals?.home ?? null,
+            away:
+              item.goals?.away ?? null,
+          },
+        }))
+        .sort((a, b) => {
+          const aTime = a.date
+            ? new Date(a.date).getTime()
+            : 0;
+
+          const bTime = b.date
+            ? new Date(b.date).getTime()
+            : 0;
+
+          return aTime - bTime;
+        });
 
     return NextResponse.json({
-      date: today,
+      from,
+      to,
       count: matches.length,
       matches,
     });
   } catch (error) {
     console.error(
-      "FOOTBALL TODAY ERROR:",
+      "FOOTBALL FIXTURES ERROR:",
       error
     );
 
