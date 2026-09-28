@@ -75,47 +75,22 @@ export async function GET() {
         ? data.response
         : [];
 
-    const allowedCompetitions = [
-      {
-        country: "England",
-        names: ["Premier League"],
-      },
-      {
-        country: "Bulgaria",
-        names: [
-          "First League",
-          "First Professional League",
-          "Parva Liga",
-        ],
-      },
-      {
-        country: "Bulgaria",
-        names: [
-          "Cup",
-          "Bulgarian Cup",
-        ],
-      },
-    ];
+  const allowedLeagueIds = [
+  39,  // Premier League
+  172, // Bulgaria First League
+  174, // Bulgaria Cup
+];
 
-    const filteredFixtures =
-      fixtures.filter((item) => {
-        const leagueName =
-          item.league?.name || "";
+const filteredFixtures =
+  fixtures.filter((item) => {
+    const leagueId =
+      item.league?.id ?? null;
 
-        const country =
-          item.league?.country || "";
-
-        return allowedCompetitions.some(
-          (competition) =>
-            competition.country === country &&
-            competition.names.some(
-              (name) =>
-                leagueName.toLowerCase() ===
-                name.toLowerCase()
-            )
-        );
-      });
-
+    return (
+      leagueId !== null &&
+      allowedLeagueIds.includes(leagueId)
+    );
+  });
     const matches =
       filteredFixtures.map((item) => ({
         fixtureId:
