@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 type Language = "bg" | "en";
 type Filter = "active" | "won" | "lost" | "long";
 
 type Prediction = {
-  id: number;
+  id: string;
   type: Filter;
   eventBg: string;
   eventEn: string;
@@ -19,60 +29,13 @@ type Prediction = {
   statusEn: string;
 };
 
-const predictions: Prediction[] = [
-  {
-    id: 1,
-    type: "active",
-    eventBg: "Arsenal срещу Liverpool",
-    eventEn: "Arsenal vs Liverpool",
-    choiceBg: "Arsenal",
-    choiceEn: "Arsenal",
-    points: 100,
-    date: "26.09.2026 15:00",
-    statusBg: "АКТИВНА",
-    statusEn: "ACTIVE",
-  },
-  {
-    id: 2,
-    type: "won",
-    eventBg: "Григор Димитров срещу Новак Джокович",
-    eventEn: "Grigor Dimitrov vs Novak Djokovic",
-    choiceBg: "Григор Димитров",
-    choiceEn: "Grigor Dimitrov",
-    points: 250,
-    date: "25.09.2026 17:30",
-    statusBg: "ПОЗНАТА",
-    statusEn: "WON",
-  },
-  {
-    id: 3,
-    type: "lost",
-    eventBg: "Lakers срещу Celtics",
-    eventEn: "Lakers vs Celtics",
-    choiceBg: "Lakers",
-    choiceEn: "Lakers",
-    points: 300,
-    date: "24.09.2026 21:00",
-    statusBg: "НЕПОЗНАТА",
-    statusEn: "LOST",
-  },
-  {
-    id: 4,
-    type: "long",
-    eventBg: "Кой ще стане шампион на България?",
-    eventEn: "Who will become Bulgarian champion?",
-    choiceBg: "Лудогорец",
-    choiceEn: "Ludogorets",
-    points: 1000,
-    date: "20.09.2026",
-    statusBg: "ДЪЛГОСРОЧНА",
-    statusEn: "LONG-TERM",
-  },
-];
-
 export default function MyPredictionsPage() {
   const [language, setLanguage] = useState<Language>("bg");
   const [filter, setFilter] = useState<Filter>("active");
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
 
   const t =
     language === "bg"
@@ -88,6 +51,7 @@ export default function MyPredictionsPage() {
           points: "Точки",
           date: "Дата / час",
           noItems: "Няма прогнози в тази категория.",
+          loading: "Зареждане...",
         }
       : {
           title: "My Predictions",
@@ -101,7 +65,85 @@ export default function MyPredictionsPage() {
           points: "Points",
           date: "Date / time",
           noItems: "No predictions in this category.",
+          loading: "Loading...",
         };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        const predictionsRef = collection(db, "predictions");
+
+        const predictionsQuery = query(
+          predictionsRef,
+          where("userId", "==", user.uid),
+          orderBy("createdAt", "desc")
+        );
+
+        const snapshot = await getDocs(predictionsQuery);
+
+        const loadedPredictions: Prediction[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+
+          let type: Filter = "active";
+          let statusBg = "АКТИВНА";
+          let statusEn = "ACTIVE";
+
+          if (data.status === "won") {
+            type = "won";
+            statusBg = "ПОЗНАТА";
+            statusEn = "WON";
+          } else if (data.status === "lost") {
+            type = "lost";
+            statusBg = "НЕПОЗНАТА";
+            statusEn = "LOST";
+          } else if (
+            data.status === "long" ||
+            data.status === "long-term"
+          ) {
+            type = "long";
+            statusBg = "ДЪЛГОСРОЧНА";
+            statusEn = "LONG-TERM";
+          }
+
+          let date = "";
+
+          if (data.createdAt?.toDate) {
+            date = data.createdAt
+              .toDate()
+              .toLocaleString(
+                language === "bg" ? "bg-BG" : "en-GB"
+              );
+          }
+
+          return {
+            id: doc.id,
+            type,
+            eventBg: data.eventBg || data.event || "",
+            eventEn: data.event || "",
+            choiceBg: data.choice || "",
+            choiceEn: data.choice || "",
+            points: Number(data.points) || 0,
+            date,
+            statusBg,
+            statusEn,
+          };
+        });
+
+        setPredictions(loadedPredictions);
+      } catch (error) {
+        console.error("MY PREDICTIONS ERROR:", error);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, language]);
 
   const filteredPredictions = predictions.filter(
     (prediction) => prediction.type === filter
@@ -113,6 +155,14 @@ export default function MyPredictionsPage() {
     { value: "lost", label: t.lost },
     { value: "long", label: t.long },
   ];
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <p className="text-slate-400">{t.loading}</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -241,6 +291,7 @@ export default function MyPredictionsPage() {
                       <p className="text-xs uppercase tracking-wide text-slate-500">
                         {t.choice}
                       </p>
+
                       <p className="mt-2 font-semibold">
                         {language === "bg"
                           ? prediction.choiceBg
@@ -252,8 +303,9 @@ export default function MyPredictionsPage() {
                       <p className="text-xs uppercase tracking-wide text-slate-500">
                         {t.date}
                       </p>
+
                       <p className="mt-2 font-semibold">
-                        {prediction.date}
+                        {prediction.date || "—"}
                       </p>
                     </div>
                   </div>
