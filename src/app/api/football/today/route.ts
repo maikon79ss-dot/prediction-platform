@@ -1,5 +1,38 @@
 import { NextResponse } from "next/server";
 
+type FixtureItem = {
+  fixture?: {
+    id?: number;
+    date?: string;
+    status?: {
+      short?: string;
+      long?: string;
+    };
+  };
+  league?: {
+    id?: number;
+    name?: string;
+    country?: string;
+    logo?: string;
+  };
+  teams?: {
+    home?: {
+      id?: number;
+      name?: string;
+      logo?: string;
+    };
+    away?: {
+      id?: number;
+      name?: string;
+      logo?: string;
+    };
+  };
+  goals?: {
+    home?: number | null;
+    away?: number | null;
+  };
+};
+
 export async function GET() {
   try {
     const apiKey =
@@ -37,7 +70,108 @@ export async function GET() {
 
     const data = await response.json();
 
-    return NextResponse.json(data);
+    const fixtures: FixtureItem[] =
+      Array.isArray(data.response)
+        ? data.response
+        : [];
+
+    const allowedCompetitions = [
+      {
+        country: "England",
+        names: ["Premier League"],
+      },
+      {
+        country: "Bulgaria",
+        names: [
+          "First League",
+          "First Professional League",
+          "Parva Liga",
+        ],
+      },
+      {
+        country: "Bulgaria",
+        names: [
+          "Cup",
+          "Bulgarian Cup",
+        ],
+      },
+    ];
+
+    const filteredFixtures =
+      fixtures.filter((item) => {
+        const leagueName =
+          item.league?.name || "";
+
+        const country =
+          item.league?.country || "";
+
+        return allowedCompetitions.some(
+          (competition) =>
+            competition.country === country &&
+            competition.names.some(
+              (name) =>
+                leagueName.toLowerCase() ===
+                name.toLowerCase()
+            )
+        );
+      });
+
+    const matches =
+      filteredFixtures.map((item) => ({
+        fixtureId:
+          item.fixture?.id ?? null,
+
+        date:
+          item.fixture?.date ?? null,
+
+        status:
+          item.fixture?.status?.short ?? null,
+
+        statusLong:
+          item.fixture?.status?.long ?? null,
+
+        league: {
+          id:
+            item.league?.id ?? null,
+          name:
+            item.league?.name ?? "",
+          country:
+            item.league?.country ?? "",
+          logo:
+            item.league?.logo ?? "",
+        },
+
+        home: {
+          id:
+            item.teams?.home?.id ?? null,
+          name:
+            item.teams?.home?.name ?? "",
+          logo:
+            item.teams?.home?.logo ?? "",
+        },
+
+        away: {
+          id:
+            item.teams?.away?.id ?? null,
+          name:
+            item.teams?.away?.name ?? "",
+          logo:
+            item.teams?.away?.logo ?? "",
+        },
+
+        goals: {
+          home:
+            item.goals?.home ?? null,
+          away:
+            item.goals?.away ?? null,
+        },
+      }));
+
+    return NextResponse.json({
+      date: today,
+      count: matches.length,
+      matches,
+    });
   } catch (error) {
     console.error(
       "FOOTBALL TODAY ERROR:",
@@ -45,7 +179,10 @@ export async function GET() {
     );
 
     return NextResponse.json(
-      { error: "Failed to load football fixtures" },
+      {
+        error:
+          "Failed to load football fixtures",
+      },
       { status: 500 }
     );
   }
