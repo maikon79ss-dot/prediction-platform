@@ -11,28 +11,45 @@ export async function POST(
   request: NextRequest
 ) {
   try {
-    const secret =
-      request.headers.get(
-        "x-settlement-secret"
-      );
+    const settlementSecret =
+  process.env.SETTLEMENT_SECRET;
 
-    const expectedSecret =
-      process.env.SETTLEMENT_SECRET;
+const cronSecret =
+  process.env.CRON_SECRET;
 
-    if (
-      !expectedSecret ||
-      !secret ||
-      secret !== expectedSecret
-    ) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        {
-          status: 401,
-        }
-      );
+const settlementHeader =
+  request.headers.get(
+    "x-settlement-secret"
+  );
+
+const authorizationHeader =
+  request.headers.get(
+    "authorization"
+  );
+
+const authorized =
+  Boolean(
+    settlementSecret &&
+      settlementHeader ===
+        settlementSecret
+  ) ||
+  Boolean(
+    cronSecret &&
+      authorizationHeader ===
+        `Bearer ${cronSecret}`
+  );
+
+if (!authorized) {
+  return NextResponse.json(
+    {
+      error:
+        "Unauthorized",
+    },
+    {
+      status: 401,
     }
+  );
+}
 
     const snapshot =
       await adminDb
@@ -110,8 +127,8 @@ export async function POST(
                 "Content-Type":
                   "application/json",
 
-                "x-settlement-secret":
-                  expectedSecret,
+               "x-settlement-secret":
+  settlementSecret!,
               },
 
               body:
