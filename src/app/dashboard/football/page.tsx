@@ -4,45 +4,70 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
+
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
+
 import {
   collection,
   doc,
+  getDoc,
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
 
-type Language = "bg" | "en";
+import {
+  auth,
+  db,
+} from "@/lib/firebase";
+
+type Language =
+  | "bg"
+  | "en";
 
 type Match = {
-  fixtureId: number | null;
-  date: string | null;
-  status: string | null;
-  statusLong: string | null;
+  eventId: string;
 
-  league: {
-    id: number | null;
-    name: string;
-    country: string;
-  };
+  home: string;
+  away: string;
 
-  home: {
-    id: number | null;
-    name: string;
-  };
+  homeLogo: string;
+  awayLogo: string;
 
-  away: {
-    id: number | null;
-    name: string;
-  };
+  competition: string;
+  competitionLogo: string;
 
-  goals: {
-    home: number | null;
-    away: number | null;
-  };
+  time: string | null;
+
+  matchDateSofia: string;
+
+  closesOn: string;
+  closesAt: string;
+
+  predictionOpen: boolean;
+
+  status: string;
+
+  sourceUrl: string;
+};
+
+type NextFootballResponse = {
+  timezone?: string;
+
+  nextDate?: string | null;
+
+  messageBg?: string;
+  messageEn?: string;
+
+  closesAt?: string;
+
+  count?: number;
+
+  matches?: Match[];
 };
 
 const longTermMarkets = [
@@ -65,157 +90,315 @@ const longTermMarkets = [
 ];
 
 export default function FootballPage() {
-  const [language, setLanguage] =
-    useState<Language>("bg");
+  const router =
+    useRouter();
 
-  const [matches, setMatches] =
+  const [
+    language,
+    setLanguage,
+  ] =
+    useState<Language>(
+      "bg"
+    );
+
+  const [
+    matches,
+    setMatches,
+  ] =
     useState<Match[]>([]);
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState("");
 
-  const [selectedOptions, setSelectedOptions] =
-    useState<Record<string, string>>({});
+  const [
+    nextInfo,
+    setNextInfo,
+  ] =
+    useState<NextFootballResponse>(
+      {}
+    );
 
-  const [amounts, setAmounts] =
-    useState<Record<string, number>>({});
-const [balance, setBalance] =
-  useState(0);
+  const [
+    selectedOptions,
+    setSelectedOptions,
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
 
-const [submitting, setSubmitting] =
-  useState<string | null>(null);
+  const [
+    amounts,
+    setAmounts,
+  ] =
+    useState<
+      Record<
+        string,
+        number
+      >
+    >({});
 
-const [message, setMessage] =
-  useState("");
+  const [
+    balance,
+    setBalance,
+  ] =
+    useState(0);
 
-const router = useRouter();
+  const [
+    submitting,
+    setSubmitting,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState("");
+
   const t =
     language === "bg"
       ? {
-          title: "Футбол",
+          title:
+            "Футбол",
+
           subtitle:
-            "Реални футболни събития от API",
-          back: "Обратно към таблото",
-          open: "ОТВОРЕНО",
-          finished: "ПРИКЛЮЧИЛ",
-          start: "Начало",
-          minimum: "Минимум: 100 точки",
-          home: "Домакин",
-          draw: "Равен",
-          away: "Гост",
-          points: "Точки",
-          confirm: "Потвърди прогноза",
-          leagues: "Първенства",
+            "Предстоящи футболни прогнози",
+
+          back:
+            "Обратно към таблото",
+
+          open:
+            "ОТВОРЕНО",
+
+          closed:
+            "ЗАТВОРЕНО",
+
+          start:
+            "Начало",
+
+          deadline:
+            "Прогнозите се приемат до",
+
+          minimum:
+            "Минимум: 100 точки",
+
+          home:
+            "Домакин",
+
+          draw:
+            "Равен",
+
+          away:
+            "Гост",
+
+          points:
+            "Точки",
+
+          confirm:
+            "Потвърди прогноза",
+
+          leagues:
+            "Следващи футболни срещи",
+
           longTerm:
             "Дългосрочни футболни прогнози",
+
           longTermMinimum:
             "Минимум: 1 000 точки",
-          view: "Виж пазара",
-          loading: "Зареждане на мачове...",
+
+          view:
+            "Виж пазара",
+
+          loading:
+            "Търсим следващите футболни срещи...",
+
           noMatches:
-            "Няма намерени мачове за тестовия период.",
-          development:
-            "Тестови реални данни от сезон 2024",
+            "Няма намерени предстоящи мачове през следващите 30 дни.",
+
+          balance:
+            "Наличен баланс",
+
+          saved:
+            "Футболната прогноза е записана успешно.",
         }
       : {
-          title: "Football",
+          title:
+            "Football",
+
           subtitle:
-            "Real football events from the API",
-          back: "Back to dashboard",
-          open: "OPEN",
-          finished: "FINISHED",
-          start: "Starts",
-          minimum: "Minimum: 100 points",
-          home: "Home",
-          draw: "Draw",
-          away: "Away",
-          points: "Points",
-          confirm: "Confirm prediction",
-          leagues: "Leagues",
+            "Upcoming football predictions",
+
+          back:
+            "Back to dashboard",
+
+          open:
+            "OPEN",
+
+          closed:
+            "CLOSED",
+
+          start:
+            "Starts",
+
+          deadline:
+            "Predictions accepted until",
+
+          minimum:
+            "Minimum: 100 points",
+
+          home:
+            "Home",
+
+          draw:
+            "Draw",
+
+          away:
+            "Away",
+
+          points:
+            "Points",
+
+          confirm:
+            "Confirm prediction",
+
+          leagues:
+            "Next football matches",
+
           longTerm:
             "Long-term football predictions",
+
           longTermMinimum:
             "Minimum: 1,000 points",
-          view: "View market",
-          loading: "Loading matches...",
+
+          view:
+            "View market",
+
+          loading:
+            "Looking for the next football matches...",
+
           noMatches:
-            "No matches found for the development period.",
-          development:
-            "Development data from the 2024 season",
+            "No upcoming matches found in the next 30 days.",
+
+          balance:
+            "Available balance",
+
+          saved:
+            "Football prediction saved successfully.",
         };
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(
-    auth,
-    async (user) => {
-      if (!user) {
-        router.push("/login");
-        return;
-      }
 
-      try {
-        const userRef = doc(
-          db,
-          "users",
-          user.uid
-        );
+  useEffect(() => {
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        async (user) => {
+          if (!user) {
+            router.push(
+              "/login"
+            );
 
-        const { getDoc } =
-          await import(
-            "firebase/firestore"
-          );
+            return;
+          }
 
-        const userSnap =
-          await getDoc(userRef);
+          try {
+            const userRef =
+              doc(
+                db,
+                "users",
+                user.uid
+              );
 
-        if (userSnap.exists()) {
-          const data =
-            userSnap.data();
+            const userSnap =
+              await getDoc(
+                userRef
+              );
 
-          setBalance(
-            Number(data.balance) || 0
-          );
+            if (
+              userSnap.exists()
+            ) {
+              const data =
+                userSnap.data();
+
+              setBalance(
+                Number(
+                  data.balance
+                ) || 0
+              );
+            }
+          } catch (
+            error
+          ) {
+            console.error(
+              "FOOTBALL USER ERROR:",
+              error
+            );
+          }
         }
-      } catch (error) {
-        console.error(
-          "FOOTBALL USER ERROR:",
-          error
-        );
-      }
-    }
-  );
+      );
 
-  return () => unsubscribe();
-}, [router]);
+    return () =>
+      unsubscribe();
+  }, [router]);
+
   useEffect(() => {
     async function loadMatches() {
       try {
-        setLoading(true);
-        setError("");
-
-        const response = await fetch(
-          "/api/football/dev-fixtures",
-          {
-            cache: "no-store",
-          }
+        setLoading(
+          true
         );
 
-        if (!response.ok) {
+        setError(
+          ""
+        );
+
+        const response =
+          await fetch(
+            "/api/football/next",
+            {
+              cache:
+                "no-store",
+            }
+          );
+
+        if (
+          !response.ok
+        ) {
           throw new Error(
             "Failed to load football fixtures"
           );
         }
 
-        const data = await response.json();
+        const data:
+          NextFootballResponse =
+          await response.json();
+
+        setNextInfo(
+          data
+        );
 
         setMatches(
-          Array.isArray(data.matches)
+          Array.isArray(
+            data.matches
+          )
             ? data.matches
             : []
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "FOOTBALL PAGE ERROR:",
           error
@@ -227,322 +410,454 @@ useEffect(() => {
             : "An error occurred while loading matches."
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     }
 
     loadMatches();
-  }, [language]);
+  }, []);
 
   function formatMatchDate(
-    value: string | null
+    value:
+      | string
+      | null
   ) {
     if (!value) {
       return "—";
     }
 
-    const date = new Date(value);
+    const date =
+      new Date(
+        value
+      );
 
     return date.toLocaleString(
       language === "bg"
         ? "bg-BG"
         : "en-GB",
       {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+        timeZone:
+          "Europe/Sofia",
+
+        day:
+          "2-digit",
+
+        month:
+          "2-digit",
+
+        year:
+          "numeric",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit",
       }
     );
   }
 
-  function getLeagueName(
-    match: Match
+  function formatDateOnly(
+    value:
+      | string
+      | null
+      | undefined
+  ) {
+    if (!value) {
+      return "—";
+    }
+
+    const parts =
+      value.split(
+        "-"
+      );
+
+    if (
+      parts.length !==
+      3
+    ) {
+      return value;
+    }
+
+    const [
+      year,
+      month,
+      day,
+    ] =
+      parts;
+
+    if (
+      language ===
+      "bg"
+    ) {
+      return `${day}.${month}.${year}`;
+    }
+
+    return `${day}/${month}/${year}`;
+  }
+
+  function getCompetitionName(
+    competition:
+      string
   ) {
     if (
-      match.league.id === 172 &&
-      language === "bg"
+      language ===
+      "en"
+    ) {
+      return competition;
+    }
+
+    if (
+      competition ===
+      "Bulgarian First League"
     ) {
       return "България - Първа лига";
     }
 
     if (
-      match.league.id === 174 &&
-      language === "bg"
+      competition ===
+      "Bulgarian Cup"
     ) {
       return "България - Купа";
     }
 
     if (
-      match.league.id === 39 &&
-      language === "bg"
+      competition ===
+      "English Premier League"
     ) {
       return "Англия - Premier League";
     }
 
-    return `${match.league.country} - ${match.league.name}`;
-  }
-async function handlePrediction(
-  match: Match
-) {
-  const user = auth.currentUser;
-
-  if (!user) {
-    router.push("/login");
-    return;
+    return competition;
   }
 
-  if (!match.fixtureId) {
-    setMessage(
-      language === "bg"
-        ? "Липсва Fixture ID."
-        : "Fixture ID is missing."
-    );
-    return;
-  }
+  async function handlePrediction(
+    match: Match
+  ) {
+    const user =
+      auth.currentUser;
 
-  const key = String(
-    match.fixtureId
-  );
+    if (!user) {
+      router.push(
+        "/login"
+      );
 
-  const choice =
-    selectedOptions[key];
+      return;
+    }
 
-  const points =
-    amounts[key] ?? 100;
+    if (
+      !match.eventId
+    ) {
+      setMessage(
+        language === "bg"
+          ? "Липсва идентификатор на събитието."
+          : "Event identifier is missing."
+      );
 
-  if (!choice) {
-    setMessage(
-      language === "bg"
-        ? "Избери Домакин, Равен или Гост."
-        : "Choose Home, Draw or Away."
-    );
-    return;
-  }
+      return;
+    }
 
-  if (points < 100) {
-    setMessage(
-      language === "bg"
-        ? "Минималната прогноза е 100 точки."
-        : "Minimum prediction is 100 points."
-    );
-    return;
-  }
+    if (
+      !match.predictionOpen
+    ) {
+      setMessage(
+        language === "bg"
+          ? "Прогнозите за този мач вече са затворени."
+          : "Predictions for this match are already closed."
+      );
 
-  if (points > balance) {
-    setMessage(
-      language === "bg"
-        ? "Нямаш достатъчно точки."
-        : "You do not have enough points."
-    );
-    return;
-  }
+      return;
+    }
 
-  try {
-    setSubmitting(key);
-    setMessage("");
+    const key =
+      match.eventId;
 
-    const userRef = doc(
-      db,
-      "users",
-      user.uid
-    );
+    const choice =
+      selectedOptions[
+        key
+      ];
 
-    const predictionRef = doc(
-      collection(
+    const points =
+      amounts[key] ??
+      100;
+
+    if (!choice) {
+      setMessage(
+        language === "bg"
+          ? "Избери Домакин, Равен или Гост."
+          : "Choose Home, Draw or Away."
+      );
+
+      return;
+    }
+
+    if (
+      points < 100
+    ) {
+      setMessage(
+        language === "bg"
+          ? "Минималната прогноза е 100 точки."
+          : "Minimum prediction is 100 points."
+      );
+
+      return;
+    }
+
+    if (
+      points >
+      balance
+    ) {
+      setMessage(
+        language === "bg"
+          ? "Нямаш достатъчно точки."
+          : "You do not have enough points."
+      );
+
+      return;
+    }
+
+    try {
+      setSubmitting(
+        key
+      );
+
+      setMessage(
+        ""
+      );
+
+      const userRef =
+        doc(
+          db,
+          "users",
+          user.uid
+        );
+
+      const predictionRef =
+        doc(
+          collection(
+            db,
+            "predictions"
+          )
+        );
+
+      const transactionRef =
+        doc(
+          collection(
+            db,
+            "transactions"
+          )
+        );
+
+      await runTransaction(
         db,
-        "predictions"
-      )
-    );
+        async (
+          transaction
+        ) => {
+          const userSnap =
+            await transaction.get(
+              userRef
+            );
 
-    const transactionRef = doc(
-      collection(
-        db,
-        "transactions"
-      )
-    );
+          if (
+            !userSnap.exists()
+          ) {
+            throw new Error(
+              "USER_NOT_FOUND"
+            );
+          }
 
-    await runTransaction(
-      db,
-      async (transaction) => {
-        const userSnap =
-          await transaction.get(
-            userRef
+          const userData =
+            userSnap.data();
+
+          const currentBalance =
+            Number(
+              userData.balance
+            ) || 0;
+
+          const currentLocked =
+            Number(
+              userData.lockedPoints
+            ) || 0;
+
+          if (
+            points >
+            currentBalance
+          ) {
+            throw new Error(
+              "INSUFFICIENT_BALANCE"
+            );
+          }
+
+          const newBalance =
+            currentBalance -
+            points;
+
+          const newLocked =
+            currentLocked +
+            points;
+
+          transaction.update(
+            userRef,
+            {
+              balance:
+                newBalance,
+
+              lockedPoints:
+                newLocked,
+            }
           );
 
-        if (!userSnap.exists()) {
-          throw new Error(
-            "USER_NOT_FOUND"
+          transaction.set(
+            predictionRef,
+            {
+              userId:
+                user.uid,
+
+              category:
+                "football",
+
+              provider:
+                "sportscore",
+
+              eventId:
+                match.eventId,
+
+              sourceUrl:
+                match.sourceUrl,
+
+              competition:
+                match.competition,
+
+              homeTeam:
+                match.home,
+
+              awayTeam:
+                match.away,
+
+              event:
+                `${match.home} vs ${match.away}`,
+
+              eventBg:
+                `${match.home} срещу ${match.away}`,
+
+              choice,
+
+              points,
+
+              status:
+                "active",
+
+              result:
+                "pending",
+
+              balanceChange:
+                -points,
+
+              eventTime:
+                match.time,
+
+              matchDateSofia:
+                match.matchDateSofia,
+
+              closesOn:
+                match.closesOn,
+
+              closesAt:
+                match.closesAt,
+
+              createdAt:
+                serverTimestamp(),
+            }
+          );
+
+          transaction.set(
+            transactionRef,
+            {
+              userId:
+                user.uid,
+
+              type:
+                "prediction",
+
+              description:
+                `Prediction: ${match.home} vs ${match.away}`,
+
+              amount:
+                -points,
+
+              balanceAfter:
+                newBalance,
+
+              status:
+                "completed",
+
+              predictionId:
+                predictionRef.id,
+
+              eventId:
+                match.eventId,
+
+              provider:
+                "sportscore",
+
+              createdAt:
+                serverTimestamp(),
+            }
+          );
+
+          setBalance(
+            newBalance
           );
         }
+      );
 
-        const userData =
-          userSnap.data();
+      setSelectedOptions(
+        (
+          current
+        ) => ({
+          ...current,
 
-        const currentBalance =
-          Number(
-            userData.balance
-          ) || 0;
+          [key]:
+            "",
+        })
+      );
 
-        const currentLocked =
-          Number(
-            userData.lockedPoints
-          ) || 0;
+      setAmounts(
+        (
+          current
+        ) => ({
+          ...current,
 
-        if (
-          points >
-          currentBalance
-        ) {
-          throw new Error(
-            "INSUFFICIENT_BALANCE"
-          );
-        }
+          [key]:
+            100,
+        })
+      );
 
-        const newBalance =
-          currentBalance -
-          points;
-
-        const newLocked =
-          currentLocked +
-          points;
-
-        transaction.update(
-          userRef,
-          {
-            balance:
-              newBalance,
-            lockedPoints:
-              newLocked,
-          }
-        );
-
-        transaction.set(
-          predictionRef,
-          {
-            userId:
-              user.uid,
-
-            category:
-              "football",
-
-            fixtureId:
-              match.fixtureId,
-
-            leagueId:
-              match.league.id,
-
-            leagueName:
-              match.league.name,
-
-            homeTeam:
-              match.home.name,
-
-            awayTeam:
-              match.away.name,
-
-            event:
-              `${match.home.name} vs ${match.away.name}`,
-
-            eventBg:
-              `${match.home.name} срещу ${match.away.name}`,
-
-            choice,
-
-            points,
-
-            status:
-              "active",
-
-            result:
-              "pending",
-
-            balanceChange:
-              -points,
-
-            fixtureDate:
-              match.date,
-
-            development:
-              true,
-
-            season:
-              2024,
-
-            createdAt:
-              serverTimestamp(),
-          }
-        );
-
-        transaction.set(
-          transactionRef,
-          {
-            userId:
-              user.uid,
-
-            type:
-              "prediction",
-
-            description:
-              `Prediction: ${match.home.name} vs ${match.away.name}`,
-
-            amount:
-              -points,
-
-            balanceAfter:
-              newBalance,
-
-            status:
-              "completed",
-
-            predictionId:
-              predictionRef.id,
-
-            createdAt:
-              serverTimestamp(),
-          }
-        );
-
-        setBalance(
-          newBalance
-        );
-      }
-    );
-
-    setSelectedOptions(
-      (current) => ({
-        ...current,
-        [key]: "",
-      })
-    );
-
-    setAmounts(
-      (current) => ({
-        ...current,
-        [key]: 100,
-      })
-    );
-
-    setMessage(
-      language === "bg"
-        ? "Тестовата футболна прогноза е записана успешно."
-        : "Development football prediction saved successfully."
-    );
-  } catch (error) {
-    console.error(
-      "FOOTBALL PREDICTION ERROR:",
+      setMessage(
+        t.saved
+      );
+    } catch (
       error
-    );
+    ) {
+      console.error(
+        "FOOTBALL PREDICTION ERROR:",
+        error
+      );
 
-    setMessage(
-      language === "bg"
-        ? "Възникна грешка при записването на прогнозата."
-        : "An error occurred while saving the prediction."
-    );
-  } finally {
-    setSubmitting(null);
+      setMessage(
+        language === "bg"
+          ? "Възникна грешка при записването на прогнозата."
+          : "An error occurred while saving the prediction."
+      );
+    } finally {
+      setSubmitting(
+        null
+      );
+    }
   }
-}
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-950/95">
@@ -566,10 +881,13 @@ async function handlePrediction(
               <button
                 type="button"
                 onClick={() =>
-                  setLanguage("bg")
+                  setLanguage(
+                    "bg"
+                  )
                 }
                 className={`rounded-lg px-3 py-1.5 text-sm font-bold ${
-                  language === "bg"
+                  language ===
+                  "bg"
                     ? "bg-emerald-500 text-slate-950"
                     : "text-slate-300"
                 }`}
@@ -580,10 +898,13 @@ async function handlePrediction(
               <button
                 type="button"
                 onClick={() =>
-                  setLanguage("en")
+                  setLanguage(
+                    "en"
+                  )
                 }
                 className={`rounded-lg px-3 py-1.5 text-sm font-bold ${
-                  language === "en"
+                  language ===
+                  "en"
                     ? "bg-emerald-500 text-slate-950"
                     : "text-slate-300"
                 }`}
@@ -608,23 +929,41 @@ async function handlePrediction(
             {t.leagues}
           </p>
 
-          <p className="mt-2 text-sm text-amber-300">
-            {t.development}
+          {nextInfo.nextDate && (
+            <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+              <p className="text-lg font-bold text-emerald-300">
+                {language ===
+                "bg"
+                  ? `Направете прогноза за ${formatDateOnly(
+                      nextInfo.nextDate
+                    )}`
+                  : `Make your prediction for ${formatDateOnly(
+                      nextInfo.nextDate
+                    )}`}
+              </p>
+
+              <p className="mt-2 text-sm text-slate-300">
+                {language ===
+                "bg"
+                  ? "Прогнозите се затварят в 23:59 ч. в деня преди мача."
+                  : "Predictions close at 23:59 on the day before the match."}
+              </p>
+            </div>
+          )}
+
+          <p className="mt-4 text-sm font-semibold text-emerald-400">
+            {t.balance}:{" "}
+            {balance.toLocaleString()}{" "}
+            {language === "bg"
+              ? "точки"
+              : "points"}
           </p>
-          <p className="mt-2 text-sm font-semibold text-emerald-400">
-  {language === "bg"
-    ? "Наличен баланс"
-    : "Available balance"}
-  : {balance.toLocaleString()}{" "}
-  {language === "bg"
-    ? "точки"
-    : "points"}
-</p>
-{message && (
-  <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-    {message}
-  </div>
-)}
+
+          {message && (
+            <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              {message}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -635,178 +974,248 @@ async function handlePrediction(
           <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-7 text-red-300">
             {error}
           </div>
-        ) : matches.length === 0 ? (
+        ) : matches.length ===
+          0 ? (
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-slate-400">
             {t.noMatches}
           </div>
         ) : (
           <div className="grid gap-5 xl:grid-cols-3">
-            {matches.map((match) => {
-              const key = String(
-                match.fixtureId
-              );
+            {matches.map(
+              (match) => {
+                const key =
+                  match.eventId;
 
-              const selected =
-                selectedOptions[key];
+                const selected =
+                  selectedOptions[
+                    key
+                  ];
 
-              const isFinished =
-                match.status === "FT";
+                const closed =
+                  !match.predictionOpen;
 
-              return (
-                <article
-                  key={key}
-                  className="rounded-3xl border border-slate-800 bg-slate-900 p-6"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">
-                      {getLeagueName(match)}
-                    </span>
+                return (
+                  <article
+                    key={
+                      key
+                    }
+                    className="rounded-3xl border border-slate-800 bg-slate-900 p-6"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">
+                        {getCompetitionName(
+                          match.competition
+                        )}
+                      </span>
 
-                    <span
-                      className={`text-xs font-bold ${
-                        isFinished
-                          ? "text-slate-400"
-                          : "text-emerald-400"
-                      }`}
-                    >
-                      {isFinished
-                        ? t.finished
-                        : t.open}
-                    </span>
-                  </div>
+                      <span
+                        className={`text-xs font-bold ${
+                          closed
+                            ? "text-slate-500"
+                            : "text-emerald-400"
+                        }`}
+                      >
+                        {closed
+                          ? t.closed
+                          : t.open}
+                      </span>
+                    </div>
 
-                  <h2 className="mt-5 text-xl font-bold">
-                    {match.home.name} vs{" "}
-                    {match.away.name}
-                  </h2>
+                    <h2 className="mt-5 text-xl font-bold">
+                      {
+                        match.home
+                      }{" "}
+                      vs{" "}
+                      {
+                        match.away
+                      }
+                    </h2>
 
-                  <p className="mt-3 text-sm text-slate-400">
-                    {t.start}:{" "}
-                    {formatMatchDate(
-                      match.date
-                    )}
-                  </p>
+                    <p className="mt-3 text-sm text-slate-400">
+                      {
+                        t.start
+                      }
+                      :{" "}
+                      {formatMatchDate(
+                        match.time
+                      )}
+                    </p>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    Fixture ID:{" "}
-                    {match.fixtureId}
-                  </p>
+                    <p className="mt-2 text-sm text-amber-300">
+                      {
+                        t.deadline
+                      }
+                      :{" "}
+                      {formatDateOnly(
+                        match.closesOn
+                      )}{" "}
+                      23:59
+                    </p>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {t.minimum}
-                  </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      {
+                        t.minimum
+                      }
+                    </p>
 
-                  <div className="mt-6 grid grid-cols-3 gap-2">
+                    <div className="mt-6 grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        disabled={
+                          closed
+                        }
+                        onClick={() =>
+                          setSelectedOptions(
+                            (
+                              current
+                            ) => ({
+                              ...current,
+
+                              [key]:
+                                "home",
+                            })
+                          )
+                        }
+                        className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+                          selected ===
+                          "home"
+                            ? "border-emerald-400 bg-emerald-500 text-slate-950"
+                            : "border-slate-700 hover:border-emerald-400"
+                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                      >
+                        {
+                          t.home
+                        }
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          closed
+                        }
+                        onClick={() =>
+                          setSelectedOptions(
+                            (
+                              current
+                            ) => ({
+                              ...current,
+
+                              [key]:
+                                "draw",
+                            })
+                          )
+                        }
+                        className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+                          selected ===
+                          "draw"
+                            ? "border-emerald-400 bg-emerald-500 text-slate-950"
+                            : "border-slate-700 hover:border-emerald-400"
+                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                      >
+                        {
+                          t.draw
+                        }
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          closed
+                        }
+                        onClick={() =>
+                          setSelectedOptions(
+                            (
+                              current
+                            ) => ({
+                              ...current,
+
+                              [key]:
+                                "away",
+                            })
+                          )
+                        }
+                        className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+                          selected ===
+                          "away"
+                            ? "border-emerald-400 bg-emerald-500 text-slate-950"
+                            : "border-slate-700 hover:border-emerald-400"
+                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                      >
+                        {
+                          t.away
+                        }
+                      </button>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="mb-2 block text-sm text-slate-400">
+                        {
+                          t.points
+                        }
+                      </label>
+
+                      <input
+                        type="number"
+                        min="100"
+                        disabled={
+                          closed
+                        }
+                        value={
+                          amounts[
+                            key
+                          ] ??
+                          100
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setAmounts(
+                            (
+                              current
+                            ) => ({
+                              ...current,
+
+                              [key]:
+                                Number(
+                                  event
+                                    .target
+                                    .value
+                                ) ||
+                                0,
+                            })
+                          )
+                        }
+                        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400 disabled:opacity-40"
+                      />
+                    </div>
+
                     <button
                       type="button"
-                      
+                      disabled={
+                        closed ||
+                        !selected ||
+                        submitting ===
+                          key
+                      }
                       onClick={() =>
-                        setSelectedOptions(
-                          (current) => ({
-                            ...current,
-                            [key]: "home",
-                          })
+                        handlePrediction(
+                          match
                         )
                       }
-                      className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
-                        selected === "home"
-                          ? "border-emerald-400 bg-emerald-500 text-slate-950"
-                          : "border-slate-700 hover:border-emerald-400"
-                      } disabled:cursor-not-allowed disabled:opacity-40`}
+                      className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {t.home}
+                      {submitting ===
+                      key
+                        ? language ===
+                          "bg"
+                          ? "Записване..."
+                          : "Saving..."
+                        : t.confirm}
                     </button>
-
-                    <button
-                      type="button"
-                      
-                      onClick={() =>
-                        setSelectedOptions(
-                          (current) => ({
-                            ...current,
-                            [key]: "draw",
-                          })
-                        )
-                      }
-                      className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
-                        selected === "draw"
-                          ? "border-emerald-400 bg-emerald-500 text-slate-950"
-                          : "border-slate-700 hover:border-emerald-400"
-                      } disabled:cursor-not-allowed disabled:opacity-40`}
-                    >
-                      {t.draw}
-                    </button>
-
-                    <button
-                      type="button"
-                      
-                      onClick={() =>
-                        setSelectedOptions(
-                          (current) => ({
-                            ...current,
-                            [key]: "away",
-                          })
-                        )
-                      }
-                      className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
-                        selected === "away"
-                          ? "border-emerald-400 bg-emerald-500 text-slate-950"
-                          : "border-slate-700 hover:border-emerald-400"
-                      } disabled:cursor-not-allowed disabled:opacity-40`}
-                    >
-                      {t.away}
-                    </button>
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="mb-2 block text-sm text-slate-400">
-                      {t.points}
-                    </label>
-
-                    <input
-                      type="number"
-                      min="100"
-                      
-                      value={
-                        amounts[key] ?? 100
-                      }
-                      onChange={(event) =>
-                        setAmounts(
-                          (current) => ({
-                            ...current,
-                            [key]:
-                              Number(
-                                event.target
-                                  .value
-                              ) || 0,
-                          })
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400 disabled:opacity-40"
-                    />
-                  </div>
-
-                <button
-  type="button"
-  disabled={
-    !selected ||
-    submitting === key
-  }
-  onClick={() =>
-    handlePrediction(match)
-  }
-  className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
->
-  {submitting === key
-    ? language === "bg"
-      ? "Записване..."
-      : "Saving..."
-    : t.confirm}
-</button>
-                  
-                </article>
-              );
-            })}
+                  </article>
+                );
+              }
+            )}
           </div>
         )}
 
@@ -819,9 +1228,13 @@ async function handlePrediction(
 
           <div className="grid gap-5 md:grid-cols-2">
             {longTermMarkets.map(
-              (market) => (
+              (
+                market
+              ) => (
                 <article
-                  key={market.en}
+                  key={
+                    market.en
+                  }
                   className="rounded-3xl border border-amber-500/20 bg-slate-900 p-6"
                 >
                   <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
@@ -829,17 +1242,22 @@ async function handlePrediction(
                   </span>
 
                   <h3 className="mt-5 text-xl font-bold">
-                    {language === "bg"
+                    {language ===
+                    "bg"
                       ? market.bg
                       : market.en}
                   </h3>
 
                   <p className="mt-3 text-sm text-slate-400">
-                    {t.longTermMinimum}
+                    {
+                      t.longTermMinimum
+                    }
                   </p>
 
                   <button className="mt-6 rounded-xl border border-amber-400 px-5 py-3 font-bold text-amber-300 hover:bg-amber-400 hover:text-slate-950">
-                    {t.view}
+                    {
+                      t.view
+                    }
                   </button>
                 </article>
               )
