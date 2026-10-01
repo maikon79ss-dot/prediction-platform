@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const response = await fetch(
-      "https://sportscore.com/api/v1/fixtures/?sport=football&date=2026-09-28&status=finished&competition=english-premier-league&limit=50",
+      "https://sportscore.com/api/v1/fixtures/?sport=football&date=2026-09-20&status=finished&competition=english-premier-league&limit=50"
       {
         cache: "no-store",
       }
