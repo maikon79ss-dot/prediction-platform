@@ -28,21 +28,11 @@ export async function GET(
             authHeader
           ),
 
-        hasBearerPrefix:
-          authHeader?.startsWith(
-            "Bearer "
-          ) ?? false,
-
         authorizationMatches:
           Boolean(
             cronSecret &&
               authHeader ===
                 `Bearer ${cronSecret}`
-          ),
-
-        cronSchedule:
-          request.headers.get(
-            "x-vercel-cron-schedule"
           ),
       }
     );
@@ -63,47 +53,18 @@ export async function GET(
       );
     }
 
-    const settlementSecret =
-      process.env.SETTLEMENT_SECRET;
-
-    if (
-      !settlementSecret
-    ) {
-      console.log(
-        "SETTLEMENT SECRET DEBUG:",
-        {
-          exists: false,
-        }
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "SETTLEMENT_SECRET is missing",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
     const response =
       await fetch(
         `${request.nextUrl.origin}/api/football/settle-pending`,
         {
-          method:
-            "POST",
+          method: "POST",
 
-         headers: {
-  "Content-Type":
-    "application/json",
+          headers: {
+            "Content-Type":
+              "application/json",
 
-  Authorization:
-    `Bearer ${cronSecret}`,
-},
-
-            "x-settlement-secret":
-              settlementSecret,
+            Authorization:
+              `Bearer ${cronSecret}`,
           },
 
           cache:
