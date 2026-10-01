@@ -15,6 +15,38 @@ export async function GET(
     const cronSecret =
       process.env.CRON_SECRET;
 
+    console.log(
+      "CRON AUTH DEBUG:",
+      {
+        hasCronSecret:
+          Boolean(
+            cronSecret
+          ),
+
+        hasAuthorizationHeader:
+          Boolean(
+            authHeader
+          ),
+
+        hasBearerPrefix:
+          authHeader?.startsWith(
+            "Bearer "
+          ) ?? false,
+
+        authorizationMatches:
+          Boolean(
+            cronSecret &&
+              authHeader ===
+                `Bearer ${cronSecret}`
+          ),
+
+        cronSchedule:
+          request.headers.get(
+            "x-vercel-cron-schedule"
+          ),
+      }
+    );
+
     if (
       !cronSecret ||
       authHeader !==
@@ -37,6 +69,13 @@ export async function GET(
     if (
       !settlementSecret
     ) {
+      console.log(
+        "SETTLEMENT SECRET DEBUG:",
+        {
+          exists: false,
+        }
+      );
+
       return NextResponse.json(
         {
           error:
@@ -67,6 +106,17 @@ export async function GET(
             "no-store",
         }
       );
+
+    console.log(
+      "SETTLE PENDING DEBUG:",
+      {
+        status:
+          response.status,
+
+        ok:
+          response.ok,
+      }
+    );
 
     const data =
       await response.json();
