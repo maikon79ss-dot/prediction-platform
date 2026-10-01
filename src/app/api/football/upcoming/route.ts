@@ -109,7 +109,7 @@ export async function GET() {
 
    const dates =
   Array.from(
-    { length: 30 },
+     { length: 8 },
         (_, index) =>
           addDays(
             todaySofia,
@@ -215,42 +215,10 @@ export async function GET() {
         )
       );
 
-  const groups: any[] = [];
-
-for (
-  let i = 0;
-  i < requests.length;
-  i += 10
-) {
-  const batch =
-    requests.slice(
-      i,
-      i + 10
-    );
-
-  const batchResults =
-    await Promise.all(
-      batch
-    );
-
-  groups.push(
-    ...batchResults
+ const groups =
+  await Promise.all(
+    requests
   );
-
-  if (
-    i + 10 <
-    requests.length
-  ) {
-    await new Promise(
-      (resolve) =>
-        setTimeout(
-          resolve,
-          750
-        )
-    );
-  }
-}
-
     const matches =
       groups
         .flat()
