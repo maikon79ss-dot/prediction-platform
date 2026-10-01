@@ -15,28 +15,6 @@ export async function GET(
     const cronSecret =
       process.env.CRON_SECRET;
 
-    console.log(
-      "CRON AUTH DEBUG:",
-      {
-        hasCronSecret:
-          Boolean(
-            cronSecret
-          ),
-
-        hasAuthorizationHeader:
-          Boolean(
-            authHeader
-          ),
-
-        authorizationMatches:
-          Boolean(
-            cronSecret &&
-              authHeader ===
-                `Bearer ${cronSecret}`
-          ),
-      }
-    );
-
     if (
       !cronSecret ||
       authHeader !==
@@ -53,25 +31,37 @@ export async function GET(
       );
     }
 
+    const settlementSecret =
+      process.env.SETTLEMENT_SECRET;
+
+    if (!settlementSecret) {
+      return NextResponse.json(
+        {
+          error:
+            "SETTLEMENT_SECRET is missing",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
     const response =
       await fetch(
         `${request.nextUrl.origin}/api/football/settle-pending`,
         {
-          method: "POST",
+          method:
+            "POST",
 
-         headers: {
-  "Content-Type":
-    "application/json",
-
-  Authorization:
-    `Bearer ${cronSecret}`,
-
-  "x-settlement-secret":
-    process.env.SETTLEMENT_SECRET ?? "",
-},
+          headers: {
+            "Content-Type":
+              "application/json",
 
             Authorization:
               `Bearer ${cronSecret}`,
+
+            "x-settlement-secret":
+              settlementSecret,
           },
 
           cache:
@@ -84,7 +74,6 @@ export async function GET(
       {
         status:
           response.status,
-
         ok:
           response.ok,
       }
