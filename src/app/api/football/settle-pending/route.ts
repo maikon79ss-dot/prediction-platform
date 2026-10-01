@@ -11,7 +11,7 @@ export async function POST(
   request: NextRequest
 ) {
   try {
-    const settlementSecret =
+const settlementSecret =
   process.env.SETTLEMENT_SECRET;
 
 const cronSecret =
@@ -27,19 +27,24 @@ const authorizationHeader =
     "authorization"
   );
 
-const authorized =
+const authorizedBySettlement =
   Boolean(
     settlementSecret &&
       settlementHeader ===
         settlementSecret
-  ) ||
+  );
+
+const authorizedByCron =
   Boolean(
     cronSecret &&
       authorizationHeader ===
         `Bearer ${cronSecret}`
   );
 
-if (!authorized) {
+if (
+  !authorizedBySettlement &&
+  !authorizedByCron
+) {
   return NextResponse.json(
     {
       error:
@@ -50,7 +55,6 @@ if (!authorized) {
     }
   );
 }
-
     const snapshot =
       await adminDb
         .collection(

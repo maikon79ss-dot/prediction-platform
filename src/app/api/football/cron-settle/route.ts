@@ -59,9 +59,16 @@ export async function GET(
         {
           method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+         headers: {
+  "Content-Type":
+    "application/json",
+
+  Authorization:
+    `Bearer ${cronSecret}`,
+
+  "x-settlement-secret":
+    process.env.SETTLEMENT_SECRET ?? "",
+},
 
             Authorization:
               `Bearer ${cronSecret}`,
