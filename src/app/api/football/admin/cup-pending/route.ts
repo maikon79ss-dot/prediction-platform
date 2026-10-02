@@ -60,11 +60,16 @@ export async function GET(
           homeTeam: string;
           awayTeam: string;
           matchDateSofia:
-            string | null;
-          closesAt:
-            string | null;
-          predictions:
-            number;
+  string | null;
+
+eventTime:
+  string | null;
+
+closesAt:
+  string | null;
+
+predictions:
+  number;
         }
       >();
 
@@ -139,6 +144,11 @@ export async function GET(
               ? data
                   .matchDateSofia
               : null,
+eventTime:
+  typeof data.eventTime ===
+  "string"
+    ? data.eventTime
+    : null,
 
           closesAt:
             typeof data

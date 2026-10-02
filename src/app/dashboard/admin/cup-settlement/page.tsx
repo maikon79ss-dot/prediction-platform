@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useState,
 } from "react";
 
@@ -8,7 +9,8 @@ import Link from "next/link";
 
 type CupMatch = {
   eventId: string;
-
+eventTime:
+  string | null;
   event: string;
 
   homeTeam: string;
@@ -70,7 +72,30 @@ export default function CupSettlementPage() {
     setMessage,
   ] =
     useState("");
+const [
+  now,
+  setNow,
+] =
+  useState(
+    Date.now()
+  );
 
+useEffect(() => {
+  const interval =
+    window.setInterval(
+      () => {
+        setNow(
+          Date.now()
+        );
+      },
+      60000
+    );
+
+  return () =>
+    window.clearInterval(
+      interval
+    );
+}, []);
   async function loadMatches(
     secretValue =
       adminSecret
@@ -288,7 +313,67 @@ export default function CupSettlementPage() {
       ""
     );
   }
+function getSettlementTimes(
+  match: CupMatch
+) {
+  if (
+    !match.eventTime
+  ) {
+    return {
+      kickoffPassed:
+        false,
 
+      resultAllowed:
+        false,
+
+      resultAllowedAt:
+        null as Date | null,
+    };
+  }
+
+  const kickoff =
+    new Date(
+      match.eventTime
+    );
+
+  if (
+    Number.isNaN(
+      kickoff.getTime()
+    )
+  ) {
+    return {
+      kickoffPassed:
+        false,
+
+      resultAllowed:
+        false,
+
+      resultAllowedAt:
+        null as Date | null,
+    };
+  }
+
+  const resultAllowedAt =
+    new Date(
+      kickoff.getTime() +
+        4 *
+          60 *
+          60 *
+          1000
+    );
+
+  return {
+    kickoffPassed:
+      now >=
+      kickoff.getTime(),
+
+    resultAllowed:
+      now >=
+      resultAllowedAt.getTime(),
+
+    resultAllowedAt,
+  };
+}
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800">
@@ -416,10 +501,20 @@ export default function CupSettlementPage() {
               </div>
             ) : (
               <div className="grid gap-5 lg:grid-cols-2">
-                {matches.map(
-                  (
-                    match
-                  ) => (
+              {matches.map(
+  (
+    match
+  ) => {
+    const {
+      kickoffPassed,
+      resultAllowed,
+      resultAllowedAt,
+    } =
+      getSettlementTimes(
+        match
+      );
+
+    return (
                     <article
                       key={
                         match.eventId
@@ -445,7 +540,33 @@ export default function CupSettlementPage() {
                         {match.matchDateSofia ??
                           "—"}
                       </p>
+                      <p className="mt-1 text-sm text-slate-400">
+  Settlement след:{" "}
+  {resultAllowedAt
+    ? resultAllowedAt.toLocaleString(
+        "bg-BG",
+        {
+          timeZone:
+            "Europe/Sofia",
 
+          day:
+            "2-digit",
+
+          month:
+            "2-digit",
+
+          year:
+            "numeric",
+
+          hour:
+            "2-digit",
+
+          minute:
+            "2-digit",
+        }
+      )
+    : "—"}
+</p>
                       <p className="mt-1 text-sm text-slate-400">
                         Активни прогнози:{" "}
                         {
@@ -456,14 +577,19 @@ export default function CupSettlementPage() {
                       <p className="mt-5 text-sm font-semibold text-slate-300">
                         Резултат след 90 минути:
                       </p>
-
+                      {!resultAllowed && (
+  <p className="mt-4 text-sm font-semibold text-amber-300">
+    Домакин / Равен / Гост ще бъдат активни 4 часа след началото на мача.
+  </p>
+)}
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         <button
                           type="button"
-                          disabled={
-                            settling ===
-                            match.eventId
-                          }
+                       disabled={
+  settling ===
+    match.eventId ||
+  !resultAllowed
+}
                           onClick={() =>
                             settleMatch(
                               match,
@@ -477,10 +603,11 @@ export default function CupSettlementPage() {
 
                         <button
                           type="button"
-                          disabled={
-                            settling ===
-                            match.eventId
-                          }
+                        disabled={
+  settling ===
+    match.eventId ||
+  !resultAllowed
+}
                           onClick={() =>
                             settleMatch(
                               match,
@@ -494,10 +621,11 @@ export default function CupSettlementPage() {
 
                         <button
                           type="button"
-                          disabled={
-                            settling ===
-                            match.eventId
-                          }
+                         disabled={
+  settling ===
+    match.eventId ||
+  !resultAllowed
+}
                           onClick={() =>
                             settleMatch(
                               match,
@@ -512,10 +640,11 @@ export default function CupSettlementPage() {
 
                       <button
                         type="button"
-                        disabled={
-                          settling ===
-                          match.eventId
-                        }
+                       disabled={
+  settling ===
+    match.eventId ||
+  !kickoffPassed
+}
                         onClick={() =>
                           settleMatch(
                             match,
@@ -527,8 +656,9 @@ export default function CupSettlementPage() {
                         Върни точките
                       </button>
                     </article>
-                  )
-                )}
+                     );
+  }
+)}
               </div>
             )}
           </>
