@@ -153,7 +153,99 @@ if (!authorized) {
           "No active Bulgarian Cup predictions found.",
       });
     }
+const firstPrediction =
+  predictions[0].data();
 
+const eventTime =
+  typeof firstPrediction.eventTime ===
+  "string"
+    ? firstPrediction.eventTime
+    : "";
+
+if (!eventTime) {
+  return NextResponse.json(
+    {
+      error:
+        "MATCH_TIME_MISSING",
+
+      message:
+        "Match start time is missing.",
+    },
+    {
+      status: 409,
+    }
+  );
+}
+
+const kickoff =
+  new Date(eventTime);
+
+if (
+  Number.isNaN(
+    kickoff.getTime()
+  )
+) {
+  return NextResponse.json(
+    {
+      error:
+        "INVALID_MATCH_TIME",
+    },
+    {
+      status: 409,
+    }
+  );
+}
+
+const now =
+  new Date();
+
+const fourHoursAfterKickoff =
+  new Date(
+    kickoff.getTime() +
+      4 * 60 * 60 * 1000
+  );
+
+if (
+  result !== "refund" &&
+  now <
+    fourHoursAfterKickoff
+) {
+  return NextResponse.json(
+    {
+      error:
+        "MATCH_NOT_READY_FOR_SETTLEMENT",
+
+      message:
+        "Settlement is allowed only 4 hours after kickoff.",
+
+      eventTime,
+
+      settlementAllowedAfter:
+        fourHoursAfterKickoff.toISOString(),
+    },
+    {
+      status: 409,
+    }
+  );
+}
+
+if (
+  result === "refund" &&
+  now < kickoff
+) {
+  return NextResponse.json(
+    {
+      error:
+        "MATCH_NOT_STARTED",
+
+      message:
+        "Refund is not allowed before the scheduled kickoff.",
+    },
+    {
+      status: 409,
+    }
+  );
+}
     const settlements = [];
 
     for (
