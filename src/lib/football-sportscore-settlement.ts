@@ -26,6 +26,15 @@ const competitionSlugs:
 
     "Bulgarian Cup":
       "bulgarian-cup",
+
+    "Spanish La Liga":
+      "spanish-la-liga",
+
+    "Bundesliga":
+      "bundesliga",
+
+    "French Ligue 1":
+      "french-ligue-1",
   };
 
 export async function settleSportScoreEvent(

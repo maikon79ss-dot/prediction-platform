@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import {
+  NextResponse,
+} from "next/server";
 
 type SportScoreMatch = {
   home?: string;
@@ -15,47 +17,82 @@ type SportScoreMatch = {
 
 const competitions = [
   {
-    name: "English Premier League",
-    slug: "english-premier-league",
+    name:
+      "English Premier League",
+    slug:
+      "english-premier-league",
   },
   {
-    name: "Bulgarian First League",
-    slug: "bulgarian-first-league",
+    name:
+      "Bulgarian First League",
+    slug:
+      "bulgarian-first-league",
   },
   {
-    name: "Bulgarian Cup",
-    slug: "bulgarian-cup",
+    name:
+      "Bulgarian Cup",
+    slug:
+      "bulgarian-cup",
+  },
+  {
+    name:
+      "Spanish La Liga",
+    slug:
+      "spanish-la-liga",
+  },
+  {
+    name:
+      "Bundesliga",
+    slug:
+      "bundesliga",
+  },
+  {
+    name:
+      "French Ligue 1",
+    slug:
+      "french-ligue-1",
   },
 ];
 
-function getSofiaDate(date: Date) {
+function getSofiaDate(
+  date: Date
+) {
   const parts =
     new Intl.DateTimeFormat(
       "en-CA",
       {
-        timeZone: "Europe/Sofia",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
+        timeZone:
+          "Europe/Sofia",
+        year:
+          "numeric",
+        month:
+          "2-digit",
+        day:
+          "2-digit",
       }
-    ).formatToParts(date);
+    ).formatToParts(
+      date
+    );
 
   const year =
     parts.find(
       (part) =>
-        part.type === "year"
+        part.type ===
+        "year"
     )?.value ?? "";
 
   const month =
     parts.find(
       (part) =>
-        part.type === "month"
+        part.type ===
+        "month"
     )?.value ?? "";
 
   const day =
     parts.find(
       (part) =>
-        part.type === "day"
+        part.type ===
+        "day"
     )?.value ?? "";
 
   return `${year}-${month}-${day}`;
@@ -65,26 +102,35 @@ function addDays(
   dateString: string,
   amount: number
 ) {
-  const [year, month, day] =
+  const [
+    year,
+    month,
+    day,
+  ] =
     dateString
       .split("-")
       .map(Number);
 
-  const date = new Date(
-    Date.UTC(
-      year,
-      month - 1,
-      day
-    )
-  );
+  const date =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day
+      )
+    );
 
   date.setUTCDate(
-    date.getUTCDate() + amount
+    date.getUTCDate() +
+      amount
   );
 
   return date
     .toISOString()
-    .slice(0, 10);
+    .slice(
+      0,
+      10
+    );
 }
 
 function previousDay(
@@ -103,6 +149,21 @@ export async function GET() {
         new Date()
       );
 
+    const found =
+      new Map<
+        string,
+        {
+          competition:
+            string;
+          competitionSlug:
+            string;
+          nextDate:
+            string;
+          matches:
+            any[];
+        }
+      >();
+
     for (
       let dayOffset = 0;
       dayOffset < 30;
@@ -114,9 +175,26 @@ export async function GET() {
           dayOffset
         );
 
-      const results =
+      const missingCompetitions =
+        competitions.filter(
+          (
+            competition
+          ) =>
+            !found.has(
+              competition.slug
+            )
+        );
+
+      if (
+        missingCompetitions.length ===
+        0
+      ) {
+        break;
+      }
+
+      const dayResults =
         await Promise.all(
-          competitions.map(
+          missingCompetitions.map(
             async (
               competition
             ) => {
@@ -142,13 +220,17 @@ export async function GET() {
                     date
                   );
 
-                  return [];
+                  return {
+                    competition,
+                    matches:
+                      [],
+                  };
                 }
 
                 const data =
                   await response.json();
 
-                const matches:
+                const rawMatches:
                   SportScoreMatch[] =
                   Array.isArray(
                     data.matches
@@ -156,79 +238,122 @@ export async function GET() {
                     ? data.matches
                     : [];
 
-                return matches.map(
-                  (match) => {
-                    const matchDateSofia =
-                      match.time
-                        ? getSofiaDate(
-                            new Date(
-                              match.time
-                            )
-                          )
-                        : date;
+                const matches =
+                  rawMatches
+                    .map(
+                      (
+                        match
+                      ) => {
+                        const matchDateSofia =
+                          match.time
+                            ? getSofiaDate(
+                                new Date(
+                                  match.time
+                                )
+                              )
+                            : date;
 
-                    const closesOn =
-                      previousDay(
-                        matchDateSofia
-                      );
+                        const closesOn =
+                          previousDay(
+                            matchDateSofia
+                          );
 
-                    const predictionOpen =
-                      todaySofia <=
-                      closesOn;
+                        return {
+                          eventId:
+                            match.url ??
+                            "",
 
-                    return {
-                      eventId:
-                        match.url ??
-                        "",
+                          home:
+                            match.home ??
+                            "",
 
-                      home:
-                        match.home ??
-                        "",
+                          away:
+                            match.away ??
+                            "",
 
-                      away:
-                        match.away ??
-                        "",
+                          homeLogo:
+                            match.home_logo ??
+                            "",
 
-                      homeLogo:
-                        match.home_logo ??
-                        "",
+                          awayLogo:
+                            match.away_logo ??
+                            "",
 
-                      awayLogo:
-                        match.away_logo ??
-                        "",
+                          competition:
+                            match.competition ??
+                            competition.name,
 
-                      competition:
-                        match.competition ??
-                        competition.name,
+                          competitionLogo:
+                            match.competition_logo ??
+                            "",
 
-                      competitionLogo:
-                        match.competition_logo ??
-                        "",
+                          time:
+                            match.time ??
+                            null,
 
-                      time:
-                        match.time ??
-                        null,
+                          matchDateSofia,
 
-                      matchDateSofia,
+                          closesOn,
 
-                      closesOn,
+                          closesAt:
+                            `${closesOn} 23:59`,
 
-                      closesAt:
-                        `${closesOn} 23:59`,
+                          predictionOpen:
+                            todaySofia <=
+                            closesOn,
 
-                      predictionOpen,
+                          status:
+                            match.status ??
+                            "upcoming",
 
-                      status:
-                        match.status ??
-                        "upcoming",
+                          sourceUrl:
+                            match.url ??
+                            "",
+                        };
+                      }
+                    )
+                    .filter(
+                      (
+                        match
+                      ) =>
+                        match.eventId &&
+                        match.home &&
+                        match.away &&
+                        match.predictionOpen
+                    )
+                    .sort(
+                      (
+                        a,
+                        b
+                      ) => {
+                        const aTime =
+                          a.time
+                            ? new Date(
+                                a.time
+                              ).getTime()
+                            : 0;
 
-                      sourceUrl:
-                        match.url ??
-                        "",
-                    };
-                  }
-                );
-              } catch (error) {
+                        const bTime =
+                          b.time
+                            ? new Date(
+                                b.time
+                              ).getTime()
+                            : 0;
+
+                        return (
+                          aTime -
+                          bTime
+                        );
+                      }
+                    );
+
+                return {
+                  competition,
+                  matches,
+                };
+              } catch (
+                error
+              ) {
                 console.error(
                   "SPORTSCORE REQUEST ERROR:",
                   competition.name,
@@ -236,88 +361,118 @@ export async function GET() {
                   error
                 );
 
-                return [];
+                return {
+                  competition,
+                  matches:
+                    [],
+                };
               }
             }
           )
         );
 
-      const matches =
-        results
-          .flat()
-          .filter(
-            (match) =>
-              match.eventId &&
-              match.home &&
-              match.away &&
-              match.predictionOpen
-          )
-          .sort((a, b) => {
-            const aTime =
-              a.time
-                ? new Date(
-                    a.time
-                  ).getTime()
-                : 0;
-
-            const bTime =
-              b.time
-                ? new Date(
-                    b.time
-                  ).getTime()
-                : 0;
-
-            return (
-              aTime - bTime
-            );
-          });
-
-      if (
-        matches.length > 0
+      for (
+        const result
+        of dayResults
       ) {
-        const nextDate =
-          matches[0]
-            .matchDateSofia;
+        if (
+          result.matches.length >
+            0 &&
+          !found.has(
+            result.competition
+              .slug
+          )
+        ) {
+          found.set(
+            result.competition
+              .slug,
+            {
+              competition:
+                result.competition
+                  .name,
 
-        return NextResponse.json({
-          timezone:
-            "Europe/Sofia",
+              competitionSlug:
+                result.competition
+                  .slug,
 
-          nextDate,
+              nextDate:
+                date,
 
-          messageBg:
-            `Направете прогноза за ${nextDate}`,
-
-          messageEn:
-            `Make your prediction for ${nextDate}`,
-
-          closesAt:
-            matches[0]
-              .closesAt,
-
-          count:
-            matches.length,
-
-          matches,
-        });
+              matches:
+                result.matches,
+            }
+          );
+        }
       }
     }
+
+    const sections =
+      competitions.map(
+        (
+          competition
+        ) => {
+          const section =
+            found.get(
+              competition.slug
+            );
+
+          if (!section) {
+            return {
+              competition:
+                competition.name,
+
+              competitionSlug:
+                competition.slug,
+
+              nextDate:
+                null,
+
+              count:
+                0,
+
+              matches:
+                [],
+            };
+          }
+
+          return {
+            ...section,
+
+            count:
+              section.matches
+                .length,
+          };
+        }
+      );
+
+    const allMatches =
+      sections.flatMap(
+        (
+          section
+        ) =>
+          section.matches
+      );
 
     return NextResponse.json({
       timezone:
         "Europe/Sofia",
 
-      nextDate: null,
+      rule:
+        "Predictions close at 23:59 Europe/Sofia on the day before the match.",
 
-      messageBg:
-        "Няма намерени предстоящи мачове през следващите 30 дни.",
+      from:
+        todaySofia,
 
-      messageEn:
-        "No upcoming matches found in the next 30 days.",
+      searchDays:
+        30,
 
-      count: 0,
+      count:
+        allMatches.length,
 
-      matches: [],
+      sections,
+
+      matches:
+        allMatches,
     });
   } catch (error) {
     console.error(
