@@ -101,7 +101,21 @@ export async function settleSportScoreEvent(
       ? firstPrediction
           .competition
       : "";
+if (
+  competition ===
+  "Bulgarian Cup"
+) {
+  return {
+    status: 409,
+    body: {
+      error:
+        "CUP_MANUAL_REVIEW",
 
+      message:
+        "Bulgarian Cup 1X2 predictions require the result after 90 minutes and must be reviewed manually.",
+    },
+  };
+}
   if (
     !matchDate ||
     !competition
