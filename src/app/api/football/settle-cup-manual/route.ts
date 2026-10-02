@@ -26,24 +26,45 @@ export async function POST(
         "x-settlement-secret"
       );
 
-    const expectedSecret =
-      process.env.SETTLEMENT_SECRET;
+    const adminSecret =
+  process.env.ADMIN_SECRET;
 
-    if (
-      !expectedSecret ||
-      !secret ||
-      secret !== expectedSecret
-    ) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        {
-          status: 401,
-        }
-      );
+const settlementSecret =
+  process.env.SETTLEMENT_SECRET;
+
+const adminHeader =
+  request.headers.get(
+    "x-admin-secret"
+  );
+
+const settlementHeader =
+  request.headers.get(
+    "x-settlement-secret"
+  );
+
+const authorized =
+  Boolean(
+    adminSecret &&
+      adminHeader ===
+        adminSecret
+  ) ||
+  Boolean(
+    settlementSecret &&
+      settlementHeader ===
+        settlementSecret
+  );
+
+if (!authorized) {
+  return NextResponse.json(
+    {
+      error:
+        "Unauthorized",
+    },
+    {
+      status: 401,
     }
-
+  );
+}
     const body =
       await request.json();
 
