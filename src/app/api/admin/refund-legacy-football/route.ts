@@ -66,26 +66,50 @@ export async function POST(
         }
       );
 
-    if (
-      legacyPredictions.length !==
-      1
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "LEGACY_PREDICTION_COUNT_MISMATCH",
+  if (
+  legacyPredictions.length !==
+  1
+) {
+  return NextResponse.json(
+    {
+      error:
+        "LEGACY_PREDICTION_COUNT_MISMATCH",
 
-          found:
-            legacyPredictions.length,
+      found:
+        legacyPredictions.length,
 
-          message:
-            "No changes were made.",
-        },
-        {
-          status: 409,
-        }
-      );
+      candidates:
+        legacyPredictions.map(
+          (docSnap) => {
+            const data =
+              docSnap.data();
+
+            return {
+              predictionId:
+                docSnap.id,
+
+              points:
+                Number(
+                  data.points
+                ) || 0,
+
+              createdAt:
+                data.createdAt
+                  ?.toDate?.()
+                  ?.toISOString?.() ??
+                null,
+            };
+          }
+        ),
+
+      message:
+        "No changes were made.",
+    },
+    {
+      status: 409,
     }
+  );
+}
 
     const predictionDoc =
       legacyPredictions[0];
