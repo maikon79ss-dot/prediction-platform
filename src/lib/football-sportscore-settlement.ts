@@ -478,17 +478,44 @@ if (
                 points
             );
 
-          transaction.update(
-            userRef,
-            {
-              balance:
-                newBalance,
+           const statsUpdate: Record<
+  string,
+  any
+> = {
+  "stats.totalPredictions":
+    FieldValue.increment(1),
+};
 
-              lockedPoints:
-                newLocked,
-            }
-          );
+if (finalResult === "won") {
+  statsUpdate[
+    "stats.wonPredictions"
+  ] = FieldValue.increment(1);
+}
 
+if (finalResult === "lost") {
+  statsUpdate[
+    "stats.lostPredictions"
+  ] = FieldValue.increment(1);
+}
+
+if (finalResult === "refund") {
+  statsUpdate[
+    "stats.refundPredictions"
+  ] = FieldValue.increment(1);
+}
+
+transaction.update(
+  userRef,
+  {
+    balance:
+      newBalance,
+
+    lockedPoints:
+      newLocked,
+
+    ...statsUpdate,
+  }
+);
           transaction.update(
             predictionRef,
             {

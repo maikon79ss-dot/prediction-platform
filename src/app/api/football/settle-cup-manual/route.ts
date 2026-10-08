@@ -397,16 +397,41 @@ if (
               currentLocked -
               points;
 
-            transaction.update(
-              userRef,
-              {
-                balance:
-                  newBalance,
+             transaction.update(
+  userRef,
+  {
+    balance:
+      newBalance,
 
-                lockedPoints:
-                  newLocked,
-              }
-            );
+    lockedPoints:
+      newLocked,
+
+    "stats.totalPredictions":
+      FieldValue.increment(1),
+
+    "stats.wonPredictions":
+      FieldValue.increment(
+        finalResult === "won"
+          ? 1
+          : 0
+      ),
+
+    "stats.lostPredictions":
+      FieldValue.increment(
+        finalResult === "lost"
+          ? 1
+          : 0
+      ),
+
+    "stats.refundPredictions":
+      FieldValue.increment(
+        finalResult === "refund"
+          ? 1
+          : 0
+      ),
+  }
+);
+          
 
             transaction.update(
               predictionRef,
