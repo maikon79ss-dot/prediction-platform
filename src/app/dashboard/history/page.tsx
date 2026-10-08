@@ -28,7 +28,7 @@ type HistoryItem = {
   balanceChange: number;
   date: string;
 };
-
+const HISTORY_LIMIT = 60;
 export default function HistoryPage() {
   const [language, setLanguage] =
     useState<Language>("bg");
@@ -52,9 +52,13 @@ export default function HistoryPage() {
             "Архив на приключилите прогнози",
           back: "Обратно към таблото",
           all: "Всички",
+
           won: "Познати",
+ 
           lost: "Непознати",
+ 
           refund: "Върнати",
+
           choice: "Избор",
           result: "Резултат",
           pointsUsed: "Използвани точки",
@@ -64,6 +68,8 @@ export default function HistoryPage() {
           noItems:
             "Няма приключили прогнози в тази категория.",
           loading: "Зареждане...",
+          limitNote:
+  "Показват се последните 60 приключени прогнози.",
         }
       : {
           title: "History",
@@ -83,6 +89,8 @@ export default function HistoryPage() {
           noItems:
             "There are no settled predictions in this category.",
           loading: "Loading...",
+          limitNote:
+  "Showing the latest 60 settled predictions.",
         };
 
   useEffect(() => {
@@ -147,9 +155,10 @@ export default function HistoryPage() {
                   bData.createdAt?.toMillis?.() ??
                   0;
 
-                return bTime - aTime;
-              })
-              .map((docSnap) => {
+              return bTime - aTime;
+})
+.slice(0, HISTORY_LIMIT)
+.map((docSnap) => {
                 const data =
                   docSnap.data();
 
@@ -202,7 +211,35 @@ export default function HistoryPage() {
                         : "en-GB"
                     );
                 }
+               const pointsUsed =
+  Number(
+    data.points
+  ) || 0;
 
+let balanceChange =
+  Number(
+    data.settlementBalanceChange
+  );
+
+if (
+  !Number.isFinite(
+    balanceChange
+  )
+) {
+  if (
+    type === "refund"
+  ) {
+    balanceChange =
+      pointsUsed;
+  } else if (
+    type === "won"
+  ) {
+    balanceChange =
+      pointsUsed * 2;
+  } else {
+    balanceChange = 0;
+  }
+}
                 return {
                   id: docSnap.id,
                   type,
@@ -218,14 +255,9 @@ export default function HistoryPage() {
                     data.choice || "",
                   resultBg,
                   resultEn,
-                  pointsUsed:
-                    Number(
-                      data.points
-                    ) || 0,
-                  balanceChange:
-                    Number(
-                      data.settlementBalanceChange
-                    ) || 0,
+                pointsUsed,
+
+balanceChange,
                   date,
                 };
               });
@@ -361,7 +393,9 @@ export default function HistoryPage() {
             );
           })}
         </div>
-
+         <p className="mt-3 text-sm text-slate-500">
+  {t.limitNote}
+</p>
         <div className="mt-8">
           {visibleItems.length === 0 ? (
             <div className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-slate-400">
