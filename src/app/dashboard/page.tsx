@@ -74,7 +74,12 @@ export default function DashboardPage() {
   const [loadingUser, setLoadingUser] = useState(true);
 
   const [predictions, setPredictions] = useState<UserPrediction[]>([]);
-
+  const [predictionStats, setPredictionStats] = useState({
+  total: 0,
+  won: 0,
+  lost: 0,
+  refund: 0,
+});
   const [openMatches, setOpenMatches] = useState<DashboardMatch[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
 
@@ -213,13 +218,29 @@ export default function DashboardPage() {
           getDocs(predictionsQuery),
         ]);
 
-        if (userSnap.exists()) {
-          const data = userSnap.data();
+     if (userSnap.exists()) {
+  const data = userSnap.data();
 
-          setBalance(Number(data.balance) || 0);
-          setLockedPoints(Number(data.lockedPoints) || 0);
-          setUserName(data.name ?? user.displayName ?? "");
-        }
+  setBalance(Number(data.balance) || 0);
+  setLockedPoints(Number(data.lockedPoints) || 0);
+  setUserName(data.name ?? user.displayName ?? "");
+
+  const stats = data.stats ?? {};
+
+  setPredictionStats({
+    total:
+      Number(stats.totalPredictions) || 0,
+
+    won:
+      Number(stats.wonPredictions) || 0,
+
+    lost:
+      Number(stats.lostPredictions) || 0,
+
+    refund:
+      Number(stats.refundPredictions) || 0,
+  });
+}
 
         const loadedPredictions: UserPrediction[] =
           predictionsSnap.docs.map((docSnap) => {
@@ -539,30 +560,23 @@ export default function DashboardPage() {
   }
 
   const activePredictions = predictions.filter(
-    (prediction) => prediction.status === "active"
-  );
+  (prediction) =>
+    prediction.status === "active"
+);
 
-  const wonPredictions = predictions.filter(
-    (prediction) =>
-      prediction.status === "won" ||
-      prediction.result === "won"
-  );
+const settledForAccuracy =
+  predictionStats.won +
+  predictionStats.lost;
 
-  const lostPredictions = predictions.filter(
-    (prediction) =>
-      prediction.status === "lost" ||
-      prediction.result === "lost"
-  );
-
-  const settledPredictions =
-    wonPredictions.length + lostPredictions.length;
-
-  const accuracy =
-    settledPredictions > 0
-      ? `${Math.round(
-          (wonPredictions.length / settledPredictions) * 100
-        )}%`
-      : "—";
+const accuracy =
+  settledForAccuracy > 0
+    ? `${Math.round(
+        (
+          predictionStats.won /
+          settledForAccuracy
+        ) * 100
+      )}%`
+    : "—";
 
   if (loadingUser) {
     return (
@@ -688,10 +702,10 @@ export default function DashboardPage() {
 
           <div className="p-6 lg:p-8">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                label={t.predictions}
-                value={String(activePredictions.length)}
-              />
+           <StatCard
+  label={t.correct}
+  value={String(predictionStats.won)}
+/>
 
               <StatCard
                 label={t.correct}
