@@ -66,53 +66,28 @@ export async function POST(
         }
       );
 
-  if (
-  legacyPredictions.length !==
-  1
-) {
+      const predictionDoc =
+  legacyPredictions.find(
+    (docSnap) =>
+      docSnap.id ===
+      "1o2mmD59p7To8chqlreV"
+  );
+
+if (!predictionDoc) {
   return NextResponse.json(
     {
       error:
-        "LEGACY_PREDICTION_COUNT_MISMATCH",
-
-      found:
-        legacyPredictions.length,
-
-      candidates:
-        legacyPredictions.map(
-          (docSnap) => {
-            const data =
-              docSnap.data();
-
-            return {
-              predictionId:
-                docSnap.id,
-
-              points:
-                Number(
-                  data.points
-                ) || 0,
-
-              createdAt:
-                data.createdAt
-                  ?.toDate?.()
-                  ?.toISOString?.() ??
-                null,
-            };
-          }
-        ),
+        "TARGET_PREDICTION_NOT_FOUND",
 
       message:
         "No changes were made.",
     },
     {
-      status: 409,
+      status: 404,
     }
   );
 }
-
-    const predictionDoc =
-      legacyPredictions[0];
+  
 
     const predictionRef =
       adminDb
