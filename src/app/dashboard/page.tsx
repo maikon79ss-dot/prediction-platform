@@ -707,10 +707,10 @@ const accuracy =
   value={String(predictionStats.won)}
 />
 
-              <StatCard
-                label={t.correct}
-                value={String(wonPredictions.length)}
-              />
+           <StatCard
+  label={t.correct}
+  value={String(predictionStats.won)}
+/>
 
               <StatCard
                 label={t.accuracy}
