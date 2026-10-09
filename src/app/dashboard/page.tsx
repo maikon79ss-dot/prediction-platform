@@ -11,8 +11,6 @@ import {
   getDoc,
   getDocs,
   query,
-  runTransaction,
-  serverTimestamp,
   where,
 } from "firebase/firestore";
 
@@ -402,163 +400,217 @@ export default function DashboardPage() {
     return labels[choice] ?? choice;
   }
 
-  async function handlePrediction(match: DashboardMatch) {
-    const user = auth.currentUser;
 
-    if (!user) {
-      router.push("/login");
-      return;
-    }
 
-    const key = match.eventId;
-    const selected = selectedOptions[key];
-    const amount = amounts[key] ?? 100;
 
-    if (!selected) {
-      setMessage(t.chooseOption);
-      return;
-    }
+  
 
-    if (amount < 100) {
-      setMessage(t.minimumError);
-      return;
-    }
+       
+  async function handlePrediction(
+  match: DashboardMatch
+) {
+  const user = auth.currentUser;
 
-    if (amount > balance) {
-      setMessage(t.balanceError);
-      return;
-    }
+  if (!user) {
+    router.push("/login");
+    return;
+  }
 
-    try {
-      setSubmitting(key);
-      setMessage("");
+  const key = match.eventId;
 
-      const userRef = doc(db, "users", user.uid);
-      const predictionRef = doc(collection(db, "predictions"));
-      const transactionRef = doc(collection(db, "transactions"));
+  const selected =
+    selectedOptions[key];
 
-      let newBalanceAfter = 0;
-      let newLockedAfter = 0;
+  const amount =
+    amounts[key] ?? 100;
 
-      await runTransaction(db, async (transaction) => {
-        const userSnap = await transaction.get(userRef);
+  if (!selected) {
+    setMessage(
+      t.chooseOption
+    );
+    return;
+  }
 
-        if (!userSnap.exists()) {
-          throw new Error("USER_NOT_FOUND");
-        }
+  if (
+    !Number.isInteger(amount) ||
+    amount < 100
+  ) {
+    setMessage(
+      t.minimumError
+    );
+    return;
+  }
 
-        const userData = userSnap.data();
+  if (amount > balance) {
+    setMessage(
+      t.balanceError
+    );
+    return;
+  }
 
-        const currentBalance =
-          Number(userData.balance) || 0;
+  try {
+    setSubmitting(key);
+    setMessage("");
 
-        const currentLockedPoints =
-          Number(userData.lockedPoints) || 0;
+    const idToken =
+      await user.getIdToken();
 
-        if (amount > currentBalance) {
-          throw new Error("INSUFFICIENT_BALANCE");
-        }
-
-        const newBalance =
-          currentBalance - amount;
-
-        const newLockedPoints =
-          currentLockedPoints + amount;
-
-        newBalanceAfter = newBalance;
-        newLockedAfter = newLockedPoints;
-
-        transaction.update(userRef, {
-          balance: newBalance,
-          lockedPoints: newLockedPoints,
-        });
-
-        transaction.set(predictionRef, {
-          userId: user.uid,
-          category: "football",
-          provider: "sportscore",
-          eventId: match.eventId,
-          sourceUrl: match.sourceUrl,
-          competition: match.competition,
-          homeTeam: match.home,
-          awayTeam: match.away,
-          event: `${match.home} vs ${match.away}`,
-          eventBg: `${match.home} срещу ${match.away}`,
-          choice: selected,
-          points: amount,
-          status: "active",
-          result: "pending",
-          balanceChange: -amount,
-          eventTime: match.time,
-          matchDateSofia: match.matchDateSofia,
-          closesOn: match.closesOn,
-          closesAt: match.closesAt,
-          createdAt: serverTimestamp(),
-        });
-
-        transaction.set(transactionRef, {
-          userId: user.uid,
-          type: "prediction",
-          description: `Prediction: ${match.home} vs ${match.away}`,
-          amount: -amount,
-          balanceAfter: newBalance,
-          status: "completed",
-          predictionId: predictionRef.id,
-          eventId: match.eventId,
-          provider: "sportscore",
-          createdAt: serverTimestamp(),
-        });
-      });
-
-      setBalance(newBalanceAfter);
-      setLockedPoints(newLockedAfter);
-
-      setPredictions((current) => [
+    const response =
+      await fetch(
+        "/api/predictions/football",
         {
-          id: predictionRef.id,
-          category: "football",
-          event: `${match.home} vs ${match.away}`,
-          eventBg: `${match.home} срещу ${match.away}`,
-          choice: selected,
-          points: amount,
-          status: "active",
-          result: "pending",
-        },
-        ...current,
-      ]);
+          method: "POST",
 
-      setSelectedOptions((current) => ({
-        ...current,
-        [key]: "",
-      }));
+          headers: {
+            "Content-Type":
+              "application/json",
 
-      setAmounts((current) => ({
-        ...current,
-        [key]: 100,
-      }));
+            Authorization:
+              `Bearer ${idToken}`,
+          },
 
-      setMessage(t.success);
-    } catch (error) {
-      console.error("PREDICTION ERROR:", error);
+          body:
+            JSON.stringify({
+              eventId:
+                match.eventId,
 
+              choice:
+                selected,
+
+              points:
+                amount,
+            }),
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
       if (
-        error instanceof Error &&
-        error.message === "INSUFFICIENT_BALANCE"
+        data.error ===
+        "INSUFFICIENT_BALANCE"
       ) {
-        setMessage(t.balanceError);
+        setMessage(
+          t.balanceError
+        );
         return;
       }
 
-      setMessage(
-        language === "bg"
-          ? "Възникна грешка при записването на прогнозата."
-          : "An error occurred while saving the prediction."
-      );
-    } finally {
-      setSubmitting(null);
-    }
-  }
+      if (
+        data.error ===
+        "PREDICTION_CLOSED"
+      ) {
+        setMessage(
+          language === "bg"
+            ? "Прогнозите за този мач вече са затворени."
+            : "Predictions for this match are already closed."
+        );
+        return;
+      }
 
+      if (
+        data.error ===
+        "MATCH_NOT_AVAILABLE"
+      ) {
+        setMessage(
+          language === "bg"
+            ? "Този мач вече не е наличен за прогноза."
+            : "This match is no longer available for prediction."
+        );
+        return;
+      }
+
+      throw new Error(
+        data.error ||
+          "CREATE_PREDICTION_FAILED"
+      );
+    }
+
+    setBalance(
+      Number(data.balance) || 0
+    );
+
+    setLockedPoints(
+      Number(
+        data.lockedPoints
+      ) || 0
+    );
+
+    setPredictions(
+      (current) => [
+        {
+          id:
+            String(
+              data.predictionId
+            ),
+
+          category:
+            "football",
+
+          event:
+            String(
+              data.prediction
+                ?.event ??
+                `${match.home} vs ${match.away}`
+            ),
+
+          eventBg:
+            String(
+              data.prediction
+                ?.eventBg ??
+                `${match.home} срещу ${match.away}`
+            ),
+
+          choice:
+            selected,
+
+          points:
+            amount,
+
+          status:
+            "active",
+
+          result:
+            "pending",
+        },
+
+        ...current,
+      ]
+    );
+
+    setSelectedOptions(
+      (current) => ({
+        ...current,
+        [key]: "",
+      })
+    );
+
+    setAmounts(
+      (current) => ({
+        ...current,
+        [key]: 100,
+      })
+    );
+
+    setMessage(
+      t.success
+    );
+  } catch (error) {
+    console.error(
+      "PREDICTION ERROR:",
+      error
+    );
+
+    setMessage(
+      language === "bg"
+        ? "Възникна грешка при записването на прогнозата."
+        : "An error occurred while saving the prediction."
+    );
+  } finally {
+    setSubmitting(null);
+  }
+}
   const activePredictions = predictions.filter(
   (prediction) =>
     prediction.status === "active"
@@ -701,27 +753,27 @@ const accuracy =
           </header>
 
           <div className="p-6 lg:p-8">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-           <StatCard
-  label={t.correct}
-  value={String(predictionStats.won)}
-/>
+           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <StatCard
+    label={t.predictions}
+    value={String(activePredictions.length)}
+  />
 
-           <StatCard
-  label={t.correct}
-  value={String(predictionStats.won)}
-/>
+  <StatCard
+    label={t.correct}
+    value={String(predictionStats.won)}
+  />
 
-              <StatCard
-                label={t.accuracy}
-                value={accuracy}
-              />
+  <StatCard
+    label={t.accuracy}
+    value={accuracy}
+  />
 
-              <StatCard
-                label={t.ranking}
-                value="—"
-              />
-            </div>
+  <StatCard
+    label={t.ranking}
+    value="—"
+  />
+</div>
 
             {message && (
               <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-300">
