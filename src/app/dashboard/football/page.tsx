@@ -6,11 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { onAuthStateChanged } from "firebase/auth";
 import {
-  collection,
   doc,
   getDoc,
-  runTransaction,
-  serverTimestamp,
 } from "firebase/firestore";
 
 import { auth, db } from "@/lib/firebase";
@@ -265,163 +262,187 @@ export default function FootballPage() {
     return names[competition] ?? competition;
   }
 
-  async function handlePrediction(match: Match) {
-    const user = auth.currentUser;
+async function handlePrediction(
+  match: Match
+) {
+  const user = auth.currentUser;
 
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+  if (!user) {
+    router.push("/login");
+    return;
+  }
 
-    if (!match.eventId) {
-      setMessage(
-        language === "bg"
-          ? "Липсва идентификатор на събитието."
-          : "Event identifier is missing."
-      );
-      return;
-    }
+  if (!match.eventId) {
+    setMessage(
+      language === "bg"
+        ? "Липсва идентификатор на събитието."
+        : "Event identifier is missing."
+    );
+    return;
+  }
 
-    if (!match.predictionOpen) {
-      setMessage(
-        language === "bg"
-          ? "Прогнозите за този мач вече са затворени."
-          : "Predictions for this match are already closed."
-      );
-      return;
-    }
+  if (!match.predictionOpen) {
+    setMessage(
+      language === "bg"
+        ? "Прогнозите за този мач вече са затворени."
+        : "Predictions for this match are already closed."
+    );
+    return;
+  }
 
-    const key = match.eventId;
-    const choice = selectedOptions[key];
-    const points = amounts[key] ?? 100;
+  const key = match.eventId;
 
-    if (!choice) {
-      setMessage(
-        language === "bg"
-          ? "Избери Домакин, Равен или Гост."
-          : "Choose Home, Draw or Away."
-      );
-      return;
-    }
+  const choice =
+    selectedOptions[key];
 
-    if (points < 100) {
-      setMessage(
-        language === "bg"
-          ? "Минималната прогноза е 100 точки."
-          : "Minimum prediction is 100 points."
-      );
-      return;
-    }
+  const points =
+    amounts[key] ?? 100;
 
-    if (points > balance) {
-      setMessage(
-        language === "bg"
-          ? "Нямаш достатъчно точки."
-          : "You do not have enough points."
-      );
-      return;
-    }
+  if (!choice) {
+    setMessage(
+      language === "bg"
+        ? "Избери Домакин, Равен или Гост."
+        : "Choose Home, Draw or Away."
+    );
+    return;
+  }
 
-    try {
-      setSubmitting(key);
-      setMessage("");
+  if (
+    !Number.isInteger(points) ||
+    points < 100
+  ) {
+    setMessage(
+      language === "bg"
+        ? "Минималната прогноза е 100 точки."
+        : "Minimum prediction is 100 points."
+    );
+    return;
+  }
 
-      const userRef = doc(db, "users", user.uid);
-      const predictionRef = doc(collection(db, "predictions"));
-      const transactionRef = doc(collection(db, "transactions"));
+  if (points > balance) {
+    setMessage(
+      language === "bg"
+        ? "Нямаш достатъчно точки."
+        : "You do not have enough points."
+    );
+    return;
+  }
 
-      await runTransaction(db, async (transaction) => {
-        const userSnap = await transaction.get(userRef);
+  try {
+    setSubmitting(key);
+    setMessage("");
 
-        if (!userSnap.exists()) {
-          throw new Error("USER_NOT_FOUND");
+    const idToken =
+      await user.getIdToken();
+
+    const response =
+      await fetch(
+        "/api/predictions/football",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+
+          body:
+            JSON.stringify({
+              eventId:
+                match.eventId,
+
+              choice,
+
+              points,
+            }),
         }
+      );
 
-        const userData = userSnap.data();
+    const data =
+      await response.json();
 
-        const currentBalance =
-          Number(userData.balance) || 0;
+    if (!response.ok) {
+      if (
+        data.error ===
+        "INSUFFICIENT_BALANCE"
+      ) {
+        setMessage(
+          language === "bg"
+            ? "Нямаш достатъчно точки."
+            : "You do not have enough points."
+        );
+        return;
+      }
 
-        const currentLocked =
-          Number(userData.lockedPoints) || 0;
+      if (
+        data.error ===
+        "PREDICTION_CLOSED"
+      ) {
+        setMessage(
+          language === "bg"
+            ? "Прогнозите за този мач вече са затворени."
+            : "Predictions for this match are already closed."
+        );
+        return;
+      }
 
-        if (points > currentBalance) {
-          throw new Error("INSUFFICIENT_BALANCE");
-        }
+      if (
+        data.error ===
+        "MATCH_NOT_AVAILABLE"
+      ) {
+        setMessage(
+          language === "bg"
+            ? "Този мач вече не е наличен за прогноза."
+            : "This match is no longer available for prediction."
+        );
+        return;
+      }
 
-        const newBalance =
-          currentBalance - points;
+      throw new Error(
+        data.error ||
+          "CREATE_PREDICTION_FAILED"
+      );
+    }
 
-        const newLocked =
-          currentLocked + points;
+    setBalance(
+      Number(data.balance) || 0
+    );
 
-        transaction.update(userRef, {
-          balance: newBalance,
-          lockedPoints: newLocked,
-        });
-
-        transaction.set(predictionRef, {
-          userId: user.uid,
-          category: "football",
-          provider: "sportscore",
-          eventId: match.eventId,
-          sourceUrl: match.sourceUrl,
-          competition: match.competition,
-          homeTeam: match.home,
-          awayTeam: match.away,
-          event: `${match.home} vs ${match.away}`,
-          eventBg: `${match.home} срещу ${match.away}`,
-          choice,
-          points,
-          status: "active",
-          result: "pending",
-          balanceChange: -points,
-          eventTime: match.time,
-          matchDateSofia: match.matchDateSofia,
-          closesOn: match.closesOn,
-          closesAt: match.closesAt,
-          createdAt: serverTimestamp(),
-        });
-
-        transaction.set(transactionRef, {
-          userId: user.uid,
-          type: "prediction",
-          description: `Prediction: ${match.home} vs ${match.away}`,
-          amount: -points,
-          balanceAfter: newBalance,
-          status: "completed",
-          predictionId: predictionRef.id,
-          eventId: match.eventId,
-          provider: "sportscore",
-          createdAt: serverTimestamp(),
-        });
-
-        setBalance(newBalance);
-      });
-
-      setSelectedOptions((current) => ({
+    setSelectedOptions(
+      (current) => ({
         ...current,
         [key]: "",
-      }));
+      })
+    );
 
-      setAmounts((current) => ({
+    setAmounts(
+      (current) => ({
         ...current,
         [key]: 100,
-      }));
+      })
+    );
 
-      setMessage(t.saved);
-    } catch (error) {
-      console.error("FOOTBALL PREDICTION ERROR:", error);
+    setMessage(
+      t.saved
+    );
+  } catch (error) {
+    console.error(
+      "FOOTBALL PREDICTION ERROR:",
+      error
+    );
 
-      setMessage(
-        language === "bg"
-          ? "Възникна грешка при записването на прогнозата."
-          : "An error occurred while saving the prediction."
-      );
-    } finally {
-      setSubmitting(null);
-    }
+    setMessage(
+      language === "bg"
+        ? "Възникна грешка при записването на прогнозата."
+        : "An error occurred while saving the prediction."
+    );
+  } finally {
+    setSubmitting(null);
   }
+}
 
   const orderedSections = [...sections].sort((a, b) => {
     const aIndex = competitionOrder.indexOf(a.competition);
