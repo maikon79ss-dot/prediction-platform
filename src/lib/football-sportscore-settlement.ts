@@ -5,7 +5,9 @@ import {
 import {
   adminDb,
 } from "@/lib/firebase-admin";
-
+import {
+  trimUserPredictionHistory,
+} from "@/lib/prediction-history-cleanup";
 type Result =
   | "won"
   | "lost"
@@ -331,7 +333,8 @@ if (
 
   const settlements:
     any[] = [];
-
+const settledUserIds =
+  new Set<string>();
   for (
     const predictionDoc
     of activePredictions
@@ -612,13 +615,40 @@ transaction.update(
         }
       );
 
-    if (settlement) {
-      settlements.push(
-        settlement
-      );
-    }
-  }
+   if (settlement) {
+  settlements.push(
+    settlement
+  );
 
+  const settledUserId =
+    String(
+      predictionDoc
+        .data()
+        .userId ?? ""
+    );
+
+  if (settledUserId) {
+    settledUserIds.add(
+      settledUserId
+    );
+  }
+}
+  }
+  for (
+  const userId
+  of settledUserIds
+) {
+  try {
+    await trimUserPredictionHistory(
+      userId
+    );
+  } catch (error) {
+    console.error(
+      "PREDICTION HISTORY CLEANUP ERROR:",
+      error
+    );
+  }
+}
   return {
     status: 200,
 
