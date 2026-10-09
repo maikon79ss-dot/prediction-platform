@@ -10,7 +10,9 @@ import {
 import {
   adminDb,
 } from "@/lib/firebase-admin";
-
+import {
+  trimUserPredictionHistory,
+} from "@/lib/prediction-history-cleanup";
 type ManualResult =
   | "home"
   | "draw"
@@ -247,7 +249,8 @@ if (
   );
 }
     const settlements = [];
-
+const settledUserIds =
+  new Set<string>();
     for (
       const predictionDoc
       of predictions
@@ -529,13 +532,40 @@ if (
           }
         );
 
-      if (settlement) {
-        settlements.push(
-          settlement
-        );
-      }
-    }
+     if (settlement) {
+  settlements.push(
+    settlement
+  );
 
+  const settledUserId =
+    String(
+      predictionDoc
+        .data()
+        .userId ?? ""
+    );
+
+  if (settledUserId) {
+    settledUserIds.add(
+      settledUserId
+    );
+  }
+}
+    }
+   for (
+  const userId
+  of settledUserIds
+) {
+  try {
+    await trimUserPredictionHistory(
+      userId
+    );
+  } catch (error) {
+    console.error(
+      "CUP HISTORY CLEANUP ERROR:",
+      error
+    );
+  }
+}
     return NextResponse.json({
       success: true,
 
