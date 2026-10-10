@@ -1,17 +1,38 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useState,
+} from "react";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+
 import { auth } from "@/lib/firebase";
 
 export default function LoginPage() {
-  const [language, setLanguage] = useState<"bg" | "en">("bg");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [language, setLanguage] =
+    useState<"bg" | "en">("bg");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [resetLoading, setResetLoading] =
+    useState(false);
 
   const router = useRouter();
 
@@ -19,59 +40,185 @@ export default function LoginPage() {
     language === "bg"
       ? {
           title: "Вход в акаунта",
-          subtitle: "Влез, за да продължиш към своето табло и прогнози.",
+
+          subtitle:
+            "Влез, за да продължиш към своето табло и прогнози.",
+
           email: "Имейл",
           password: "Парола",
           login: "Вход",
           loggingIn: "Влизане...",
-          noAccount: "Нямаш акаунт?",
-          create: "Създай акаунт",
-          back: "Обратно към началната страница",
-          error: "Грешка при вход.",
-          wrongCredentials: "Невалиден имейл или парола.",
-          success: "Успешен вход.",
+
+          forgotPassword:
+            "Забравена парола?",
+
+          sendingReset:
+            "Изпращане...",
+
+          enterEmail:
+            "Първо въведи имейла на акаунта си.",
+
+          resetSent:
+            "Изпратихме имейл за възстановяване на паролата. Провери и папка Спам.",
+
+          resetError:
+            "Неуспешно изпращане на имейла за възстановяване.",
+
+          noAccount:
+            "Нямаш акаунт?",
+
+          create:
+            "Създай акаунт",
+
+          back:
+            "Обратно към началната страница",
+
+          error:
+            "Грешка при вход.",
+
+          wrongCredentials:
+            "Невалиден имейл или парола.",
+
+          success:
+            "Успешен вход.",
         }
       : {
-          title: "Login to your account",
-          subtitle: "Sign in to continue to your dashboard and predictions.",
+          title:
+            "Login to your account",
+
+          subtitle:
+            "Sign in to continue to your dashboard and predictions.",
+
           email: "Email",
           password: "Password",
           login: "Login",
-          loggingIn: "Signing in...",
-          noAccount: "Don't have an account?",
-          create: "Create account",
-          back: "Back to homepage",
-          error: "Login failed.",
-          wrongCredentials: "Invalid email or password.",
-          success: "Login successful.",
+          loggingIn:
+            "Signing in...",
+
+          forgotPassword:
+            "Forgot password?",
+
+          sendingReset:
+            "Sending...",
+
+          enterEmail:
+            "Enter your account email first.",
+
+          resetSent:
+            "We sent a password reset email. Please also check your spam folder.",
+
+          resetError:
+            "Unable to send the password reset email.",
+
+          noAccount:
+            "Don't have an account?",
+
+          create:
+            "Create account",
+
+          back:
+            "Back to homepage",
+
+          error:
+            "Login failed.",
+
+          wrongCredentials:
+            "Invalid email or password.",
+
+          success:
+            "Login successful.",
         };
 
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
+
     setMessage("");
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
 
       setMessage(t.success);
-      router.push("/dashboard");
+
+      router.push(
+        "/dashboard"
+      );
     } catch (error: any) {
-      console.error("LOGIN ERROR:", error);
+      console.error(
+        "LOGIN ERROR:",
+        error
+      );
 
       if (
-        error?.code === "auth/invalid-credential" ||
-        error?.code === "auth/user-not-found" ||
-        error?.code === "auth/wrong-password"
+        error?.code ===
+          "auth/invalid-credential" ||
+        error?.code ===
+          "auth/user-not-found" ||
+        error?.code ===
+          "auth/wrong-password"
       ) {
-        setMessage(t.wrongCredentials);
+        setMessage(
+          t.wrongCredentials
+        );
       } else {
         setMessage(
-          `${t.error} ${error?.code ? `(${error.code})` : ""}`
+          `${t.error} ${
+            error?.code
+              ? `(${error.code})`
+              : ""
+          }`
         );
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    const cleanEmail =
+      email.trim();
+
+    if (!cleanEmail) {
+      setMessage(
+        t.enterEmail
+      );
+
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      setMessage("");
+
+      await sendPasswordResetEmail(
+        auth,
+        cleanEmail
+      );
+
+      setMessage(
+        t.resetSent
+      );
+    } catch (error: any) {
+      console.error(
+        "PASSWORD RESET ERROR:",
+        error
+      );
+
+      setMessage(
+        `${t.resetError} ${
+          error?.code
+            ? `(${error.code})`
+            : ""
+        }`
+      );
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -89,7 +236,9 @@ export default function LoginPage() {
           <div className="flex rounded-xl border border-slate-700 p-1">
             <button
               type="button"
-              onClick={() => setLanguage("bg")}
+              onClick={() =>
+                setLanguage("bg")
+              }
               className={`rounded-lg px-3 py-1.5 text-sm font-bold ${
                 language === "bg"
                   ? "bg-emerald-500 text-slate-950"
@@ -101,7 +250,9 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => setLanguage("en")}
+              onClick={() =>
+                setLanguage("en")
+              }
               className={`rounded-lg px-3 py-1.5 text-sm font-bold ${
                 language === "en"
                   ? "bg-emerald-500 text-slate-950"
@@ -121,12 +272,18 @@ export default function LoginPage() {
               Prediction Platform
             </p>
 
-            <h1 className="mt-4 text-3xl font-bold">{t.title}</h1>
+            <h1 className="mt-4 text-3xl font-bold">
+              {t.title}
+            </h1>
 
-            <p className="mt-3 text-slate-400">{t.subtitle}</p>
+            <p className="mt-3 text-slate-400">
+              {t.subtitle}
+            </p>
 
             <form
-              onSubmit={handleLogin}
+              onSubmit={
+                handleLogin
+              }
               className="mt-8 space-y-5"
             >
               <div>
@@ -138,7 +295,14 @@ export default function LoginPage() {
                   type="email"
                   required
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(
+                    event
+                  ) =>
+                    setEmail(
+                      event.target
+                        .value
+                    )
+                  }
                   placeholder="name@example.com"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400"
                 />
@@ -153,18 +317,47 @@ export default function LoginPage() {
                   type="password"
                   required
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(
+                    event
+                  ) =>
+                    setPassword(
+                      event.target
+                        .value
+                    )
+                  }
                   placeholder="••••••••"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400"
                 />
+
+                <div className="mt-3 text-right">
+                  <button
+                    type="button"
+                    onClick={
+                      handleResetPassword
+                    }
+                    disabled={
+                      resetLoading
+                    }
+                    className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+                  >
+                    {resetLoading
+                      ? t.sendingReset
+                      : t.forgotPassword}
+                  </button>
+                </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={
+                  loading ||
+                  resetLoading
+                }
                 className="w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? t.loggingIn : t.login}
+                {loading
+                  ? t.loggingIn
+                  : t.login}
               </button>
             </form>
 
