@@ -4,35 +4,34 @@ import { useState } from "react";
 import { translations, type Language } from "./translations";
 
 export default function Home() {
-  const [language, setLanguage] = useState<Language>("en");
+  const [language, setLanguage] = useState<Language>("bg");
   const t = translations[language];
 
-  const previewMarkets = [
-    {
-      category: t.preview.football,
-      title: t.preview.arsenal,
-      detail: t.preview.arsenalTime,
-    },
-    {
-      category: t.preview.tennis,
-      title: t.preview.dimitrov,
-      detail: t.preview.dimitrovTime,
-    },
-    {
-      category: t.preview.weather,
-      title: t.preview.rain,
-      detail: t.preview.rainTime,
-    },
-  ];
+ const previewMarkets = [
+  {
+    category: t.preview.football,
+    title: t.preview.footballTitle,
+    detail: t.preview.footballDetail,
+  },
+  {
+    category: t.preview.sports,
+    title: t.preview.sportsTitle,
+    detail: t.preview.sportsDetail,
+  },
+  {
+    category: t.preview.weather,
+    title: t.preview.weatherTitle,
+    detail: t.preview.weatherDetail,
+  },
+];
 
-  const categories = [
-    t.categories.football,
-    t.categories.tennis,
-    t.categories.basketball,
-    t.categories.weather,
-    t.categories.formula1,
-    t.categories.longTerm,
-  ];
+ const categories = [
+  t.categories.football,
+  t.categories.tennis,
+  t.categories.basketball,
+  t.categories.weather,
+  t.categories.longTerm,
+];
 
   const steps = [
     {
@@ -288,15 +287,18 @@ export default function Home() {
                   {t.performance.accuracy}
                 </p>
 
-                <p className="mt-2 text-2xl font-bold">72%</p>
+                <p className="mt-2 text-lg font-bold">
+  {t.performance.accuracyValue}
+</p>
               </div>
 
               <div className="rounded-2xl bg-slate-950 p-5">
                 <p className="text-sm text-slate-400">
                   {t.performance.ranking}
-                </p>
-
-                <p className="mt-2 text-2xl font-bold">#184</p>
+                </p
+                <p className="mt-2 text-lg font-bold">
+  {t.performance.rankingValue}
+</p>
               </div>
             </div>
           </div>
