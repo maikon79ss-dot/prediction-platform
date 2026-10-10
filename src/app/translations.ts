@@ -17,9 +17,10 @@ export const translations = {
     },
 
     preview: {
-      label: "Platform overview",
-      title: "Prediction categories",
-      liveLater: "REAL EVENTS",
+  label: "Platform overview",
+  title: "Prediction categories",
+  liveLater: "REAL EVENTS",
+  open: "AVAILABLE",
 
       football: "Football",
       footballTitle: "Predict upcoming football matches",
@@ -123,10 +124,11 @@ export const translations = {
       note: "Всеки нов акаунт започва с 3 000 виртуални точки.",
     },
 
-    preview: {
-      label: "Преглед на платформата",
-      title: "Категории за прогнози",
-      liveLater: "РЕАЛНИ СЪБИТИЯ",
+   preview: {
+  label: "Преглед на платформата",
+  title: "Категории за прогнози",
+  liveLater: "РЕАЛНИ СЪБИТИЯ",
+  open: "НАЛИЧНО",
 
       football: "Футбол",
       footballTitle: "Прогнозирай предстоящи футболни мачове",
