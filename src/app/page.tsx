@@ -243,81 +243,76 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <section className="mx-auto max-w-7xl px-6 py-20">
-        <div className="grid gap-8 lg:grid-cols-2">
-     <div className="rounded-3xl border border-sky-500/20 bg-slate-900 p-8">
-  <p className="text-sm font-semibold text-sky-400">
-    {t.performance.eyebrow}
-  </p>
-
-  <h2 className="mt-3 text-3xl font-bold">
-    {t.performance.title}
-  </h2>
-
-  <p className="mt-4 text-slate-400">
-    {t.performance.description}
-  </p>
-
-  <div className="mt-6 grid grid-cols-2 gap-4">
-    <div className="rounded-2xl bg-slate-950 p-5">
-      <p className="text-sm text-slate-400">
-        {t.performance.accuracy}
+  <div className="grid gap-8 lg:grid-cols-2">
+    <div className="rounded-3xl border border-amber-500/20 bg-slate-900 p-8">
+      <p className="text-sm font-semibold text-amber-400">
+        {t.longTerm.eyebrow}
       </p>
 
-      <p className="mt-2 text-lg font-bold">
-        {t.performance.accuracyValue}
+      <h2 className="mt-3 text-3xl font-bold">
+        {t.longTerm.title}
+      </h2>
+
+      <p className="mt-4 text-slate-400">
+        {t.longTerm.description}
       </p>
+
+      <div className="mt-6 rounded-2xl bg-slate-950 p-5">
+        <p className="text-sm text-slate-400">
+          {t.longTerm.example}
+        </p>
+
+        <p className="mt-2 text-xl font-bold">
+          {t.longTerm.question}
+        </p>
+
+        <p className="mt-2 text-sm text-amber-300">
+          {t.longTerm.minimum}
+        </p>
+      </div>
     </div>
 
-    <div className="rounded-2xl bg-slate-950 p-5">
-      <p className="text-sm text-slate-400">
-        {t.performance.ranking}
+    <div className="rounded-3xl border border-sky-500/20 bg-slate-900 p-8">
+      <p className="text-sm font-semibold text-sky-400">
+        {t.performance.eyebrow}
       </p>
 
-      <p className="mt-2 text-lg font-bold">
-        {t.performance.rankingValue}
+      <h2 className="mt-3 text-3xl font-bold">
+        {t.performance.title}
+      </h2>
+
+      <p className="mt-4 text-slate-400">
+        {t.performance.description}
       </p>
+
+      <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="rounded-2xl bg-slate-950 p-5">
+          <p className="text-sm text-slate-400">
+            {t.performance.accuracy}
+          </p>
+
+          <p className="mt-2 text-lg font-bold">
+            {t.performance.accuracyValue}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-slate-950 p-5">
+          <p className="text-sm text-slate-400">
+            {t.performance.ranking}
+          </p>
+
+          <p className="mt-2 text-lg font-bold">
+            {t.performance.rankingValue}
+          </p>
+        </div>
+      </div>
     </div>
   </div>
-</div>
+</section>
 
-          <div className="rounded-3xl border border-sky-500/20 bg-slate-900 p-8">
-            <p className="text-sm font-semibold text-sky-400">
-              {t.performance.eyebrow}
-            </p>
+ 
 
-            <h2 className="mt-3 text-3xl font-bold">
-              {t.performance.title}
-            </h2>
-
-            <p className="mt-4 text-slate-400">
-              {t.performance.description}
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="rounded-2xl bg-slate-950 p-5">
-                <p className="text-sm text-slate-400">
-                  {t.performance.accuracy}
-                </p>
-
-                <p className="mt-2 text-lg font-bold">
-  {t.performance.accuracyValue}
-</p>
-              </div>
-
-              <div className="rounded-2xl bg-slate-950 p-5">
-                <p className="text-sm text-slate-400">
-                  {t.performance.ranking}
-                </p
-                <p className="mt-2 text-lg font-bold">
-  {t.performance.rankingValue}
-</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section className="border-t border-slate-800">
         <div className="mx-auto max-w-5xl px-6 py-20 text-center">
