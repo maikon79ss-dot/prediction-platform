@@ -66,7 +66,7 @@ export default function RegisterPage() {
           already: "Already have an account?",
           login: "Login",
           back: "Back to homepage",
-          bonus: "Starting balance: 10,000 points",
+         bonus: "Starting balance: 3,000 points",
           passwordMismatch: "Passwords do not match.",
           passwordShort: "Password must be at least 6 characters.",
           success: "Account created successfully.",
