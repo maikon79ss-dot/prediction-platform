@@ -13,8 +13,10 @@ import {
   where,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import {
+  useLanguage,
+} from "@/lib/use-language";
 
-type Language = "bg" | "en";
 
 type TransactionType =
   | "bonus"
@@ -32,7 +34,8 @@ type Transaction = {
 };
 
 export default function BalancePage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const [availableBalance, setAvailableBalance] = useState(0);
   const [lockedBalance, setLockedBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
