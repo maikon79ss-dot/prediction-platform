@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -64,7 +66,8 @@ const dashboardCompetitionOrder = [
 ];
 
 export default function DashboardPage() {
-  const [language, setLanguage] = useState<Language>("bg");
+const [language, setLanguage] =
+  useLanguage("bg");
 
   const [balance, setBalance] = useState(0);
   const [lockedPoints, setLockedPoints] = useState(0);
