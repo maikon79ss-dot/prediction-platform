@@ -11,7 +11,9 @@ import {
   where,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 type Language = "bg" | "en";
 type Filter = "active" | "won" | "lost" | "long";
 
@@ -29,7 +31,8 @@ type Prediction = {
 };
 
 export default function MyPredictionsPage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const [filter, setFilter] = useState<Filter>("active");
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
