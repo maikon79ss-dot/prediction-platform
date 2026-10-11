@@ -36,8 +36,8 @@ export default function RegisterPage() {
     language === "bg"
       ? {
           title: "Създай акаунт",
-          subtitle:
-            "Регистрирай се и започни с 10 000 виртуални точки.",
+        subtitle:
+  "Регистрирай се и започни с 3 000 виртуални точки.",
           name: "Име",
           email: "Имейл",
           password: "Парола",
@@ -47,7 +47,7 @@ export default function RegisterPage() {
           already: "Вече имаш акаунт?",
           login: "Вход",
           back: "Обратно към началната страница",
-          bonus: "Стартов баланс: 10 000 точки",
+          bonus: "Стартов баланс: 3 000 точки",
           passwordMismatch: "Паролите не съвпадат.",
           passwordShort: "Паролата трябва да е поне 6 символа.",
           success: "Акаунтът е създаден успешно.",
@@ -55,8 +55,8 @@ export default function RegisterPage() {
         }
       : {
           title: "Create an account",
-          subtitle:
-            "Register and start with 10,000 virtual points.",
+         subtitle:
+  "Register and start with 3,000 virtual points.",
           name: "Name",
           email: "Email",
           password: "Password",
@@ -109,9 +109,12 @@ export default function RegisterPage() {
        balance: 3000,
 lockedPoints: 0,
         language,
-        totalPredictions: 0,
-        correctPredictions: 0,
-        accuracy: 0,
+       stats: {
+  totalPredictions: 0,
+  wonPredictions: 0,
+  lostPredictions: 0,
+  refundPredictions: 0,
+},
         createdAt: serverTimestamp(),
       });
 
