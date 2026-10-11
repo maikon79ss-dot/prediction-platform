@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   doc,
@@ -80,7 +82,8 @@ const longTermMarkets = [
 export default function FootballPage() {
   const router = useRouter();
 
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const [sections, setSections] = useState<CompetitionSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
