@@ -11,7 +11,9 @@ import {
   where,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 type Language = "bg" | "en";
 type HistoryFilter = "all" | "won" | "lost" | "refund";
 
@@ -31,8 +33,7 @@ type HistoryItem = {
 const HISTORY_LIMIT = 60;
 export default function HistoryPage() {
   const [language, setLanguage] =
-    useState<Language>("bg");
-
+  useLanguage("bg");
   const [filter, setFilter] =
     useState<HistoryFilter>("all");
 
