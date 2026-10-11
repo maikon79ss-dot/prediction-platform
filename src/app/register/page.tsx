@@ -3,7 +3,9 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
@@ -20,7 +22,8 @@ import {
 import { auth, db } from "@/lib/firebase";
 
 export default function RegisterPage() {
-  const [language, setLanguage] = useState<"bg" | "en">("bg");
+const [language, setLanguage] =
+  useLanguage("bg");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

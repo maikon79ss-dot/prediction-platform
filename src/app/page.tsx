@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { translations, type Language } from "./translations";
+import { translations } from "./translations";
+import { useLanguage } from "@/lib/use-language";
 
 export default function Home() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const t = translations[language];
 
  const previewMarkets = [

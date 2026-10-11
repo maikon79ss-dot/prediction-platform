@@ -4,7 +4,9 @@ import {
   FormEvent,
   useState,
 } from "react";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -17,7 +19,7 @@ import { auth } from "@/lib/firebase";
 
 export default function LoginPage() {
   const [language, setLanguage] =
-    useState<"bg" | "en">("bg");
+  useLanguage("bg");
 
   const [email, setEmail] =
     useState("");
