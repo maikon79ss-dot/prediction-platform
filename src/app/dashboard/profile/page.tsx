@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-
+import {
+  useLanguage,
+} from "@/lib/use-language";
 type Language = "bg" | "en";
 
 export default function ProfilePage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const [name, setName] = useState("Stefan");
   const [email, setEmail] = useState("stefan@example.com");
   const [preferredLanguage, setPreferredLanguage] = useState<Language>("bg");
@@ -210,7 +213,7 @@ export default function ProfilePage() {
 
         <section className="mt-8 rounded-3xl border border-sky-500/20 bg-slate-900 p-7">
           <h2 className="text-2xl font-bold">{t.futureTitle}</h2>
-
+             
           <p className="mt-4 max-w-3xl leading-7 text-slate-400">
             {t.futureText}
           </p>
