@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  useLanguage,
+} from "@/lib/use-language";
 
-type Language = "bg" | "en";
 
 type LongTermMarket = {
   categoryBg: string;
@@ -123,7 +125,8 @@ const filters = [
 ];
 
 export default function LongTermPage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const [activeFilter, setActiveFilter] = useState("all");
 
   const t =
