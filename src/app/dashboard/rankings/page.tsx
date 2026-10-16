@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import {
+  useLanguage,
+} from "@/lib/use-language";
 
-type Language = "bg" | "en";
+
 
 type RankingUser = {
   id: number;
@@ -58,7 +60,8 @@ const users: RankingUser[] = [
 ];
 
 export default function RankingsPage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
 
   const t =
     language === "bg"
