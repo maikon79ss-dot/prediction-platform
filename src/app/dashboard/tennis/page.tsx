@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import {
+  useLanguage,
+} from "@/lib/use-language";
 
-type Language = "bg" | "en";
+
 
 type TennisMatch = {
   tournamentBg: string;
@@ -57,7 +59,8 @@ const longTermMarkets = [
 ];
 
 export default function TennisPage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
 
   const t =
     language === "bg"
