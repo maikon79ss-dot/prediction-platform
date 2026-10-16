@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  useLanguage,
+} from "@/lib/use-language";
 
-type Language = "bg" | "en";
 
 const weatherOptions = [
   {
@@ -33,7 +35,8 @@ const weatherOptions = [
 ];
 
 export default function WeatherPage() {
-  const [language, setLanguage] = useState<Language>("bg");
+  const [language, setLanguage] =
+  useLanguage("bg");
   const [selected, setSelected] = useState("");
   const [points, setPoints] = useState(100);
   const [message, setMessage] = useState("");
