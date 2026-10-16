@@ -89,30 +89,7 @@ const longTermMarkets: LongTermMarket[] = [
     closesBg: "Сезонна прогноза",
     closesEn: "Season prediction",
   },
-  {
-    categoryBg: "Формула 1",
-    categoryEn: "Formula 1",
-    questionBg: "Кой ще стане световен шампион във Formula 1?",
-    questionEn: "Who will become Formula 1 World Champion?",
-    closesBg: "Сезонна прогноза",
-    closesEn: "Season prediction",
-  },
-  {
-    categoryBg: "Формула 1",
-    categoryEn: "Formula 1",
-    questionBg: "Кой конструктор ще спечели шампионата?",
-    questionEn: "Which constructor will win the championship?",
-    closesBg: "Сезонна прогноза",
-    closesEn: "Season prediction",
-  },
-  {
-    categoryBg: "Хокей",
-    categoryEn: "Hockey",
-    questionBg: "Кой ще спечели Stanley Cup?",
-    questionEn: "Who will win the Stanley Cup?",
-    closesBg: "Сезонна прогноза",
-    closesEn: "Season prediction",
-  },
+     
 ];
 
 const filters = [
@@ -120,8 +97,7 @@ const filters = [
   { bg: "Футбол", en: "Football", value: "Football" },
   { bg: "Тенис", en: "Tennis", value: "Tennis" },
   { bg: "Баскетбол", en: "Basketball", value: "Basketball" },
-  { bg: "Формула 1", en: "Formula 1", value: "Formula 1" },
-  { bg: "Хокей", en: "Hockey", value: "Hockey" },
+ 
 ];
 
 export default function LongTermPage() {
