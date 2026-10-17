@@ -69,7 +69,6 @@ function isUsableSinglesMatch(
     return false;
   }
 
-  // Изключваме двойките.
   if (
     home.includes("/") ||
     away.includes("/")
@@ -80,8 +79,6 @@ function isUsableSinglesMatch(
   const combined =
     `${home} ${away}`.toLowerCase();
 
-  // Изключваме временни
-  // placeholder имена.
   if (
     combined.includes(
       "winner of"
@@ -94,163 +91,196 @@ function isUsableSinglesMatch(
   return true;
 }
 
+async function fetchDay(
+  matchDate: string
+) {
+  const url =
+    new URL(
+      "https://sportscore.com/api/v1/fixtures/"
+    );
+
+  url.searchParams.set(
+    "sport",
+    "tennis"
+  );
+
+  url.searchParams.set(
+    "date",
+    matchDate
+  );
+
+  url.searchParams.set(
+    "status",
+    "upcoming"
+  );
+
+  url.searchParams.set(
+    "limit",
+    "100"
+  );
+
+  const controller =
+    new AbortController();
+
+  const timeout =
+    setTimeout(
+      () =>
+        controller.abort(),
+      6000
+    );
+
+  try {
+    const response =
+      await fetch(
+        url.toString(),
+        {
+          cache: "no-store",
+          signal:
+            controller.signal,
+        }
+      );
+
+    if (!response.ok) {
+      return {
+        date: matchDate,
+        matches: [],
+      };
+    }
+
+    const data =
+      await response.json();
+
+    const rawMatches:
+      SportScoreMatch[] =
+      Array.isArray(data)
+        ? data
+        : Array.isArray(
+            data.matches
+          )
+        ? data.matches
+        : Array.isArray(
+            data.results
+          )
+        ? data.results
+        : [];
+
+    const matches =
+      rawMatches
+        .filter(
+          isUsableSinglesMatch
+        )
+        .filter(
+          (match) =>
+            match.url &&
+            match.time
+        )
+        .slice(0, 12)
+        .map((match) => ({
+          eventId:
+            match.url as string,
+
+          player1:
+            match.home || "",
+
+          player2:
+            match.away || "",
+
+          player1Logo:
+            match.home_logo ??
+            null,
+
+          player2Logo:
+            match.away_logo ??
+            null,
+
+          tournament:
+            match.competition ||
+            "Tennis",
+
+          tournamentLogo:
+            match.competition_logo ??
+            null,
+
+          eventTime:
+            match.time as string,
+
+          matchDateSofia:
+            matchDate,
+
+          closesOn:
+            previousDay(
+              matchDate
+            ),
+
+          closesAt:
+            `${previousDay(
+              matchDate
+            )} 23:59`,
+
+          predictionOpen:
+            true,
+
+          provider:
+            "sportscore",
+        }));
+
+    return {
+      date: matchDate,
+      matches,
+    };
+  } catch (error) {
+    console.error(
+      `TENNIS ${matchDate} ERROR:`,
+      error
+    );
+
+    return {
+      date: matchDate,
+      matches: [],
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function GET() {
   try {
     const today =
       getSofiaDate();
 
-    // Днешните срещи вече са
-    // затворени според нашето
-    // правило 23:59 предния ден.
-    for (
-      let dayOffset = 1;
-      dayOffset <= 7;
-      dayOffset++
-    ) {
-      const matchDate =
-        addDays(
-          today,
-          dayOffset
-        );
-
-      const url =
-        new URL(
-          "https://sportscore.com/api/v1/fixtures/"
-        );
-
-      url.searchParams.set(
-        "sport",
-        "tennis"
-      );
-
-      url.searchParams.set(
-        "date",
-        matchDate
-      );
-
-      url.searchParams.set(
-        "status",
-        "upcoming"
-      );
-
-      url.searchParams.set(
-        "limit",
-        "100"
-      );
-
-      const response =
-        await fetch(
-          url.toString(),
-          {
-            cache: "no-store",
-          }
-        );
-
-      if (!response.ok) {
-        console.error(
-          "SPORTSCORE TENNIS ERROR:",
-          response.status
-        );
-
-        continue;
-      }
-
-      const data =
-        await response.json();
-
-      const rawMatches:
-        SportScoreMatch[] =
-        Array.isArray(data)
-          ? data
-          : Array.isArray(
-              data.matches
-            )
-          ? data.matches
-          : Array.isArray(
-              data.results
-            )
-          ? data.results
-          : [];
-
-      const matches =
-        rawMatches
-          .filter(
-            isUsableSinglesMatch
+    const dates =
+      Array.from(
+        { length: 7 },
+        (_, index) =>
+          addDays(
+            today,
+            index + 1
           )
-          .filter(
-            (match) =>
-              match.url &&
-              match.time
-          )
-          .slice(0, 12)
-          .map((match) => ({
-            eventId:
-              match.url as string,
+      );
 
-            player1:
-              match.home || "",
+    const results =
+      await Promise.all(
+        dates.map(
+          fetchDay
+        )
+      );
 
-            player2:
-              match.away || "",
+    const firstDay =
+      results.find(
+        (result) =>
+          result.matches.length > 0
+      );
 
-            player1Logo:
-              match.home_logo ??
-              null,
-
-            player2Logo:
-              match.away_logo ??
-              null,
-
-            tournament:
-              match.competition ||
-              "Tennis",
-
-            tournamentLogo:
-              match.competition_logo ??
-              null,
-
-            eventTime:
-              match.time as string,
-
-            matchDateSofia:
-              matchDate,
-
-            closesOn:
-              previousDay(
-                matchDate
-              ),
-
-            closesAt:
-              `${previousDay(
-                matchDate
-              )} 23:59`,
-
-            predictionOpen:
-              today <=
-              previousDay(
-                matchDate
-              ),
-
-            provider:
-              "sportscore",
-          }));
-
-      if (
-        matches.length > 0
-      ) {
-        return NextResponse.json(
-          {
-            date: matchDate,
-            matches,
-          }
-        );
-      }
+    if (!firstDay) {
+      return NextResponse.json({
+        date: null,
+        matches: [],
+      });
     }
 
-    return NextResponse.json({
-      date: null,
-      matches: [],
-    });
+    return NextResponse.json(
+      firstDay
+    );
   } catch (error) {
     console.error(
       "TENNIS NEXT ERROR:",
