@@ -109,10 +109,7 @@ async function fetchDay(
     matchDate
   );
 
-  url.searchParams.set(
-    "status",
-    "upcoming"
-  );
+ 
 
   url.searchParams.set(
     "limit",
@@ -169,11 +166,17 @@ async function fetchDay(
         .filter(
           isUsableSinglesMatch
         )
-        .filter(
-          (match) =>
-            match.url &&
-            match.time
-        )
+      .filter(
+  (match) =>
+    match.url &&
+    match.time &&
+    (
+      match.status === "upcoming" ||
+      match.status_text
+        ?.toLowerCase()
+        .includes("not started")
+    )
+)
         .slice(0, 12)
         .map((match) => ({
           eventId:
